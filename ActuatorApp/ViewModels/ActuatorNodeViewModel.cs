@@ -1,6 +1,8 @@
 ﻿using System.Windows.Media;
+using ActuatorApp.Core.Interfaces;
 using NodeNetwork.ViewModels;
 using ReactiveUI;
+using CoreNodeType = ActuatorApp.Core.Enums.NodeType;
 
 namespace ActuatorApp.ViewModels
 {
@@ -58,7 +60,7 @@ namespace ActuatorApp.ViewModels
     /// <summary>
     /// 電動推桿系統節點基類
     /// </summary>
-    public class ActuatorNodeViewModel : NodeViewModel
+    public class ActuatorNodeViewModel : NodeViewModel, IActuatorNode
     {
         static ActuatorNodeViewModel()
         {
@@ -71,6 +73,16 @@ namespace ActuatorApp.ViewModels
         /// 節點類型
         /// </summary>
         public NodeType NodeType { get; }
+
+        /// <summary>
+        /// 實作 IActuatorNode - 取得核心層 NodeType
+        /// </summary>
+        CoreNodeType IActuatorNode.NodeType => MapToCore(NodeType);
+
+        /// <summary>
+        /// 實作 IActuatorNode - 取得顯示名稱
+        /// </summary>
+        string IActuatorNode.DisplayName => Name;
 
         #region ProductImage
         private ImageSource _productImage;
@@ -99,6 +111,24 @@ namespace ActuatorApp.ViewModels
         public ActuatorNodeViewModel(NodeType type)
         {
             NodeType = type;
+        }
+
+        /// <summary>
+        /// 將 ActuatorApp.NodeType 映射到 Core.NodeType
+        /// </summary>
+        private static CoreNodeType MapToCore(NodeType type)
+        {
+            return type switch
+            {
+                NodeType.PowerSupply => CoreNodeType.PowerSupply,
+                NodeType.Battery => CoreNodeType.Battery,
+                NodeType.ControlBox => CoreNodeType.ControlBox,
+                NodeType.Actuator => CoreNodeType.Actuator,
+                NodeType.Control => CoreNodeType.Control,
+                NodeType.Accessory => CoreNodeType.Accessory,
+                NodeType.Parameter => CoreNodeType.Parameter,
+                _ => CoreNodeType.Accessory
+            };
         }
     }
 }

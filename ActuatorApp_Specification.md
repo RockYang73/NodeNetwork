@@ -6,7 +6,7 @@
 | **專案名稱** | ActuatorApp (電動推桿控制系統節點編輯器) |
 | **基於框架** | NodeNetwork (WPF + ReactiveUI) |
 | **建立日期** | 2025年11月27日 |
-| **版本** | 1.0 |
+| **版本** | 2.0 (已重構解耦架構) |
 
 ---
 
@@ -24,7 +24,57 @@
                               配件 (TYC)
 ```
 
-### 1.3 資料流類型
+### 1.3 軟體架構 (解耦設計)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        ActuatorApp (UI Layer)                    │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────┐  │
+│  │   MainViewModel │  │ NodeViewModels  │  │     Views       │  │
+│  │  (uses Catalog) │  │ (impl IActuator │  │   (XAML/WPF)    │  │
+│  └────────┬────────┘  │     Node)       │  └─────────────────┘  │
+│           │           └────────┬────────┘                        │
+│  ┌────────▼────────────────────▼────────────────────────────┐   │
+│  │              NodeNetworkNodeFactory (Adapter)             │   │
+│  │           - Implements INodeFactory                       │   │
+│  │           - Maps ProductDefinition → NodeViewModel        │   │
+│  └──────────────────────────────┬───────────────────────────┘   │
+└─────────────────────────────────┼───────────────────────────────┘
+                                  │ depends on
+┌─────────────────────────────────▼───────────────────────────────┐
+│                   ActuatorApp.Core (Business Logic)              │
+│                       (netstandard2.0)                           │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                       Interfaces                          │   │
+│  │  - IActuatorNode (NodeType, ModelNumber, DisplayName)     │   │
+│  │  - IActuatorPort (PortType, Name, ParentNode)             │   │
+│  │  - IConnectionValidator (Validate)                        │   │
+│  │  - INodeFactory (CreateNode, CreateNodeByModel)           │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                        Products                           │   │
+│  │  - ProductDefinition (完整產品規格)                        │   │
+│  │  - PortDefinition (端口規格)                               │   │
+│  │  - CategoryDefinition (分類結構)                           │   │
+│  │  - ProductCatalog (產品目錄服務)                           │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                       Validation                          │   │
+│  │  - ConnectionRuleEngine (純商業邏輯驗證)                   │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │                         Enums                             │   │
+│  │  - NodeType, PortType, ProtocolType                       │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+**架構優勢:**
+- **ActuatorApp.Core** 完全不依賴 NodeNetwork，可隨時遷移至其他節點編輯器套件
+- 產品定義集中管理，可透過 JSON 檔案動態載入
+- 連線驗證邏輯與 UI 框架分離
+
+### 1.4 資料流類型
 | 類型 | 說明 | 視覺呈現 | 流向 |
 |------|------|----------|------|
 | **Power** | 電流傳遞 | 藍色圓形端口 | TP → TBB → TC |
@@ -257,93 +307,162 @@ public enum ProtocolType
 ## 8. 專案檔案結構
 
 ```
-📁 ActuatorApp/
-├── App.xaml
-├── App.xaml.cs
-├── ActuatorApp.csproj
-├── 📁 Properties/
-│   └── AssemblyInfo.cs
-├── 📁 Models/
-│   ├── PowerSignal.cs
-│   ├── BinarySignal.cs
-│   └── ParameterValue.cs
-├── 📁 ViewModels/
-│   ├── ActuatorPortViewModel.cs
-│   ├── ActuatorNodeViewModel.cs
-│   ├── ActuatorInputViewModel.cs
-│   ├── ActuatorOutputViewModel.cs
-│   ├── MainViewModel.cs
-│   ├── 📁 Nodes/
-│   │   ├── TPNodeViewModel.cs
-│   │   ├── TBBNodeViewModel.cs
-│   │   ├── TCNodeViewModel.cs
-│   │   ├── TANodeViewModel.cs
-│   │   ├── THNodeViewModel.cs
-│   │   ├── TYCNodeViewModel.cs
-│   │   ├── THPNodeViewModel.cs
-│   │   └── ParameterNodeViewModel.cs
-│   └── 📁 Editors/
-│       └── ParameterValueEditorViewModel.cs
-├── 📁 Views/
-│   ├── ActuatorPortView.xaml
-│   ├── ActuatorPortView.xaml.cs
-│   ├── ActuatorNodeView.xaml
-│   ├── ActuatorNodeView.xaml.cs
-│   ├── ParameterNodeView.xaml
-│   ├── ParameterNodeView.xaml.cs
-│   ├── THNodeView.xaml
-│   ├── THNodeView.xaml.cs
-│   ├── MainWindow.xaml
-│   ├── MainWindow.xaml.cs
-│   └── 📁 Editors/
-│       ├── ParameterValueEditorView.xaml
-│       └── ParameterValueEditorView.xaml.cs
-├── 📁 Validation/
-│   └── ConnectionRules.cs
-└── 📁 Resources/
-    └── (產品圖片檔案 - 預留)
+📁 NodeNetwork/
+├── 📁 ActuatorApp.Core/           ★ 核心層 (無 UI 依賴)
+│   ├── ActuatorApp.Core.csproj
+│   ├── 📁 Enums/
+│   │   ├── NodeType.cs
+│   │   ├── PortType.cs
+│   │   └── ProtocolType.cs
+│   ├── 📁 Interfaces/
+│   │   ├── IActuatorNode.cs
+│   │   ├── IActuatorPort.cs
+│   │   ├── IConnectionValidator.cs
+│   │   └── INodeFactory.cs
+│   ├── 📁 Products/
+│   │   ├── CategoryDefinition.cs
+│   │   ├── PortDefinition.cs
+│   │   ├── ProductCatalog.cs
+│   │   └── ProductDefinition.cs
+│   └── 📁 Validation/
+│       └── ConnectionRuleEngine.cs
+│
+├── 📁 ActuatorApp/                 ★ UI 層 (NodeNetwork 實作)
+│   ├── App.xaml
+│   ├── App.xaml.cs
+│   ├── ActuatorApp.csproj
+│   ├── 📁 Adapters/                ★ 適配器層
+│   │   └── NodeNetworkNodeFactory.cs
+│   ├── 📁 Properties/
+│   │   └── AssemblyInfo.cs
+│   ├── 📁 Models/
+│   │   ├── PowerSignal.cs
+│   │   ├── BinarySignal.cs
+│   │   └── ParameterValue.cs
+│   ├── 📁 ViewModels/
+│   │   ├── ActuatorPortViewModel.cs
+│   │   ├── ActuatorNodeViewModel.cs    ★ 實作 IActuatorNode
+│   │   ├── ActuatorInputViewModel.cs
+│   │   ├── ActuatorOutputViewModel.cs
+│   │   ├── MainViewModel.cs            ★ 使用 ProductCatalog
+│   │   ├── 📁 Nodes/
+│   │   │   ├── TPNodeViewModel.cs
+│   │   │   ├── TBBNodeViewModel.cs
+│   │   │   ├── TCNodeViewModel.cs
+│   │   │   ├── TANodeViewModel.cs
+│   │   │   ├── THNodeViewModel.cs
+│   │   │   ├── TYCNodeViewModel.cs
+│   │   │   ├── THPNodeViewModel.cs
+│   │   │   └── ParameterNodeViewModel.cs
+│   │   └── 📁 Editors/
+│   │       └── ParameterValueEditorViewModel.cs
+│   ├── 📁 Views/
+│   │   ├── ActuatorPortView.xaml
+│   │   ├── ActuatorPortView.xaml.cs
+│   │   ├── ActuatorNodeView.xaml
+│   │   ├── ActuatorNodeView.xaml.cs
+│   │   ├── ParameterNodeView.xaml
+│   │   ├── ParameterNodeView.xaml.cs
+│   │   ├── THNodeView.xaml
+│   │   ├── THNodeView.xaml.cs
+│   │   ├── MainWindow.xaml
+│   │   ├── MainWindow.xaml.cs
+│   │   └── 📁 Editors/
+│   │       ├── ParameterValueEditorView.xaml
+│   │       └── ParameterValueEditorView.xaml.cs
+│   ├── 📁 Validation/
+│   │   └── ConnectionRules.cs
+│   └── 📁 Resources/
+│       └── (產品圖片檔案 - 預留)
 ```
 
 ---
 
 ## 9. 相依套件
 
+### ActuatorApp.Core (netstandard2.0)
+```xml
+<!-- 無外部相依，僅使用 .NET Standard 內建函式庫 -->
+<PackageReference Include="System.Text.Json" Version="6.0.0" />
+```
+
+### ActuatorApp (netcoreapp3.1)
 ```xml
 <PackageReference Include="Microsoft.CSharp" Version="4.7.0" />
 <PackageReference Include="ReactiveUI" Version="13.2.18" />
 <PackageReference Include="ReactiveUI.WPF" Version="13.2.18" />
+<ProjectReference Include="..\ActuatorApp.Core\ActuatorApp.Core.csproj" />
 <ProjectReference Include="..\NodeNetwork\NodeNetwork.csproj" />
 <ProjectReference Include="..\NodeNetworkToolkit\NodeNetworkToolkit.csproj" />
 ```
 
 ---
 
-## 10. 使用說明
+## 10. 遷移指南 (從 NodeNetwork 到其他框架)
 
-### 10.1 啟動專案
+如需遷移至其他節點編輯器框架（如付費套件），請依照以下步驟：
+
+### 10.1 Core 層 (無需修改)
+`ActuatorApp.Core` 專案完全不依賴 NodeNetwork，可直接引用。
+
+### 10.2 需重新實作的部分
+1. **建立新的 NodeFactory** - 實作 `INodeFactory` 介面
+2. **建立新的 Node ViewModels** - 實作 `IActuatorNode` 介面
+3. **建立新的 Port ViewModels** - 實作 `IActuatorPort` 介面
+4. **建立新的 ConnectionValidator** - 使用 `ConnectionRuleEngine` 的純邏輯
+
+### 10.3 可重用的部分
+- `ProductCatalog` - 所有產品定義
+- `ConnectionRuleEngine` - 連線驗證邏輯
+- `Enums` - NodeType, PortType, ProtocolType
+- JSON 產品配置檔案
+
+### 10.4 範例：遷移至假設的 "SuperNodeEditor" 框架
+```csharp
+// 新的 NodeFactory
+public class SuperNodeEditorFactory : INodeFactory
+{
+    private readonly ProductCatalog _catalog;
+    
+    public object CreateNode(ProductDefinition product)
+    {
+        // 使用 SuperNodeEditor 的 API 建立節點
+        var node = new SuperNode();
+        node.Name = product.ModelNumber;
+        // ... 設定端口等
+        return node;
+    }
+}
+```
+
+---
+
+## 11. 使用說明
+
+### 11.1 啟動專案
 1. 開啟 Visual Studio
 2. 載入 `NodeNetwork.sln` 方案
 3. 將 `ActuatorApp` 設為啟動專案
 4. 按 F5 執行
 
-### 10.2 新增節點
+### 11.2 新增節點
 1. 從左側 TabControl 選擇產品分類
 2. 點擊節點項目將其加入畫布
 3. 拖曳節點調整位置
 
-### 10.3 建立連線
+### 11.3 建立連線
 1. 從輸出端口拖曳至輸入端口
 2. 系統會自動驗證連線是否有效
 3. 無效連線會顯示錯誤訊息
 
-### 10.4 參數設定
+### 11.4 參數設定
 1. 點擊「新增參數節點」按鈕
 2. 在黃色橢圓節點中輸入參數值
 3. 將參數節點連接到 TA 的 Code 或 Stroke 端口
 
 ---
 
-## 11. 後續擴充項目
+## 12. 後續擴充項目
 
 - [ ] 產品圖片載入機制
 - [ ] 後臺配置 API 整合
@@ -355,10 +474,12 @@ public enum ProtocolType
 - [ ] 拖放 (Drag & Drop) 節點支援
 - [ ] 節點複製/貼上功能
 - [ ] Undo/Redo 功能
+- [ ] JSON 產品配置外部檔案載入
+- [ ] 多語系支援
 
 ---
 
-## 12. 參考資料
+## 13. 參考資料
 
 - [NodeNetwork GitHub](https://github.com/Wouterdek/NodeNetwork)
 - [NodeNetwork 文件](https://wouterdek.github.io/NodeNetwork/doc)

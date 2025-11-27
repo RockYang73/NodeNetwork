@@ -39,6 +39,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NodeNetworkTests", "NodeNet
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActuatorApp", "ActuatorApp\ActuatorApp.csproj", "{C4996F8C-5E35-455B-EEE6-BBA2047FF03E}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ActuatorApp.Core", "ActuatorApp.Core\ActuatorApp.Core.csproj", "{D7E5F8A1-2B3C-4D5E-9F0A-1B2C3D4E5F6A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -81,6 +83,10 @@ Global
 		{C4996F8C-5E35-455B-EEE6-BBA2047FF03E}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C4996F8C-5E35-455B-EEE6-BBA2047FF03E}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C4996F8C-5E35-455B-EEE6-BBA2047FF03E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D7E5F8A1-2B3C-4D5E-9F0A-1B2C3D4E5F6A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D7E5F8A1-2B3C-4D5E-9F0A-1B2C3D4E5F6A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D7E5F8A1-2B3C-4D5E-9F0A-1B2C3D4E5F6A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D7E5F8A1-2B3C-4D5E-9F0A-1B2C3D4E5F6A}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -93,6 +99,7 @@ Global
 		{6FECDB98-52C4-4153-9B69-9165585D94DD} = {0C9292C7-07B0-45AB-A787-951C8B61AB35}
 		{C80CA3BF-5F3F-48FC-B34A-1CCDD082A828} = {0C9292C7-07B0-45AB-A787-951C8B61AB35}
 		{C4996F8C-5E35-455B-EEE6-BBA2047FF03E} = {EEFF7EA4-CA97-4FFE-A955-F48C8FD522A6}
+		{D7E5F8A1-2B3C-4D5E-9F0A-1B2C3D4E5F6A} = {EEFF7EA4-CA97-4FFE-A955-F48C8FD522A6}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {923D42E4-533A-4A65-BB3E-A7CCC2585386}

@@ -1,7 +1,11 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using ActuatorApp.Adapters;
+using ActuatorApp.Core.Enums;
+using ActuatorApp.Core.Products;
 using ActuatorApp.ViewModels.Nodes;
 using DynamicData;
 using NodeNetwork.Toolkit.Layout.ForceDirected;
@@ -15,6 +19,16 @@ namespace ActuatorApp.ViewModels
     /// </summary>
     public class MainViewModel : ReactiveObject
     {
+        /// <summary>
+        /// 產品目錄 (從 Core 層讀取)
+        /// </summary>
+        private readonly ProductCatalog _catalog;
+
+        /// <summary>
+        /// 節點工廠 (NodeNetwork 適配器)
+        /// </summary>
+        private readonly NodeNetworkNodeFactory _nodeFactory;
+
         /// <summary>
         /// 節點網路
         /// </summary>
@@ -32,131 +46,91 @@ namespace ActuatorApp.ViewModels
 
         public MainViewModel()
         {
+            // 從 Core 層載入產品目錄
+            _catalog = ProductCatalog.CreateDefault();
+            _nodeFactory = new NodeNetworkNodeFactory(_catalog);
+
             Network = new NetworkViewModel();
 
-            // 建立產品分類 NodeList
-            NodeCategories = new ObservableCollection<NodeCategory>
-            {
-                // Control Box (TC 系列)
-                new NodeCategory
-                {
-                    Name = "Control Box",
-                    Nodes = new ObservableCollection<NodeItemViewModel>
-                    {
-                        new NodeItemViewModel("TC12", () => new TCNodeViewModel("TC12", 2)),
-                        new NodeItemViewModel("TC14", () => new TCNodeViewModel("TC14", 3)),
-                        new NodeItemViewModel("TC16", () => new TCNodeViewModel("TC16", 4)),
-                    }
-                },
-
-                // Actuator (TA 系列)
-                new NodeCategory
-                {
-                    Name = "Actuator",
-                    Nodes = new ObservableCollection<NodeItemViewModel>
-                    {
-                        new NodeItemViewModel("TA6", () => new TANodeViewModel("TA6")),
-                        new NodeItemViewModel("TA9", () => new TANodeViewModel("TA9")),
-                        new NodeItemViewModel("TA12", () => new TANodeViewModel("TA12")),
-                    }
-                },
-
-                // Controls (TH/TFH 系列)
-                new NodeCategory
-                {
-                    Name = "Controls",
-                    SubCategories = new ObservableCollection<NodeSubCategory>
-                    {
-                        new NodeSubCategory
-                        {
-                            Name = "Embedded",
-                            Nodes = new ObservableCollection<NodeItemViewModel>
-                            {
-                                new NodeItemViewModel("TFH2", () => new THNodeViewModel("TFH2")),
-                                new NodeItemViewModel("TFH6", () => new THNodeViewModel("TFH6")),
-                                new NodeItemViewModel("TFH7", () => new THNodeViewModel("TFH7")),
-                                new NodeItemViewModel("TFH9", () => new THNodeViewModel("TFH9")),
-                                new NodeItemViewModel("TFH15", () => new THNodeViewModel("TFH15")),
-                            }
-                        },
-                        new NodeSubCategory
-                        {
-                            Name = "Wire Handset",
-                            Nodes = new ObservableCollection<NodeItemViewModel>
-                            {
-                                new NodeItemViewModel("TH1", () => new THNodeViewModel("TH1")),
-                                new NodeItemViewModel("TH4", () => new THNodeViewModel("TH4")),
-                                new NodeItemViewModel("TH7", () => new THNodeViewModel("TH7")),
-                                new NodeItemViewModel("TH7R", () => new THNodeViewModel("TH7R")),
-                                new NodeItemViewModel("TH11", () => new THNodeViewModel("TH11")),
-                                new NodeItemViewModel("TH17", () => new THNodeViewModel("TH17")),
-                                new NodeItemViewModel("TFH35", () => new THNodeViewModel("TFH35")),
-                            }
-                        },
-                        new NodeSubCategory
-                        {
-                            Name = "Wireless Handset",
-                            Nodes = new ObservableCollection<NodeItemViewModel>
-                            {
-                                new NodeItemViewModel("TH3", () => new THNodeViewModel("TH3")),
-                                new NodeItemViewModel("TH8", () => new THNodeViewModel("TH8")),
-                                new NodeItemViewModel("TH13", () => new THNodeViewModel("TH13")),
-                                new NodeItemViewModel("TH25", () => new THNodeViewModel("TH25")),
-                                new NodeItemViewModel("TFH22", () => new THNodeViewModel("TFH22")),
-                                new NodeItemViewModel("TFH25", () => new THNodeViewModel("TFH25")),
-                                new NodeItemViewModel("TFH27", () => new THNodeViewModel("TFH27")),
-                                new NodeItemViewModel("TFH28", () => new THNodeViewModel("TFH28")),
-                                new NodeItemViewModel("TFH34", () => new THNodeViewModel("TFH34")),
-                            }
-                        },
-                        new NodeSubCategory
-                        {
-                            Name = "Handheld",
-                            Nodes = new ObservableCollection<NodeItemViewModel>
-                            {
-                                new NodeItemViewModel("THP", () => new THPNodeViewModel("THP")),
-                            }
-                        }
-                    }
-                },
-
-                // Accessories (TYC 系列 - 延長線/分接線)
-                new NodeCategory
-                {
-                    Name = "Accessories",
-                    Nodes = new ObservableCollection<NodeItemViewModel>
-                    {
-                        new NodeItemViewModel("TYC", () => new TYCNodeViewModel("TYC")),
-                    }
-                },
-
-                // Power Supply (TP 系列)
-                new NodeCategory
-                {
-                    Name = "Power Supply",
-                    Nodes = new ObservableCollection<NodeItemViewModel>
-                    {
-                        new NodeItemViewModel("TP5", () => new TPNodeViewModel("TP5")),
-                        new NodeItemViewModel("TP7", () => new TPNodeViewModel("TP7")),
-                    }
-                },
-
-                // Battery (TBB 系列)
-                new NodeCategory
-                {
-                    Name = "Battery",
-                    Nodes = new ObservableCollection<NodeItemViewModel>
-                    {
-                        new NodeItemViewModel("TBB3", () => new TBBNodeViewModel("TBB3")),
-                        new NodeItemViewModel("BAT1", () => new TBBNodeViewModel("BAT1")),
-                    }
-                },
-            };
+            // 根據 ProductCatalog 建立 NodeCategories
+            NodeCategories = BuildNodeCategoriesFromCatalog();
 
             // 自動佈局
             var layouter = new ForceDirectedLayouter();
             AutoLayout = ReactiveCommand.Create(() =>
                 layouter.Layout(new Configuration { Network = Network }, 10000));
+        }
+
+        /// <summary>
+        /// 根據 ProductCatalog 建立 UI 分類結構
+        /// </summary>
+        private ObservableCollection<NodeCategory> BuildNodeCategoriesFromCatalog()
+        {
+            var categories = new ObservableCollection<NodeCategory>();
+
+            foreach (var categoryDef in _catalog.Categories)
+            {
+                var category = new NodeCategory
+                {
+                    Name = categoryDef.Name
+                };
+
+                // 如果有子分類
+                if (categoryDef.SubCategories != null && categoryDef.SubCategories.Any())
+                {
+                    category.SubCategories = new ObservableCollection<NodeSubCategory>();
+
+                    foreach (var subCategoryDef in categoryDef.SubCategories)
+                    {
+                        var subCategory = new NodeSubCategory
+                        {
+                            Name = subCategoryDef.Name,
+                            Nodes = new ObservableCollection<NodeItemViewModel>()
+                        };
+
+                        foreach (var product in subCategoryDef.Products)
+                        {
+                            if (_nodeFactory.IsModelSupported(product.ModelNumber))
+                            {
+                                subCategory.Nodes.Add(new NodeItemViewModel(
+                                    product.DisplayName ?? product.ModelNumber,
+                                    () => _nodeFactory.CreateNodeViewModel(product.ModelNumber)
+                                ));
+                            }
+                        }
+
+                        if (subCategory.Nodes.Any())
+                        {
+                            category.SubCategories.Add(subCategory);
+                        }
+                    }
+                }
+                else
+                {
+                    // 沒有子分類，直接列出產品
+                    category.Nodes = new ObservableCollection<NodeItemViewModel>();
+
+                    foreach (var product in categoryDef.Products)
+                    {
+                        if (_nodeFactory.IsModelSupported(product.ModelNumber))
+                        {
+                            category.Nodes.Add(new NodeItemViewModel(
+                                product.DisplayName ?? product.ModelNumber,
+                                () => _nodeFactory.CreateNodeViewModel(product.ModelNumber)
+                            ));
+                        }
+                    }
+                }
+
+                // 只加入有產品的分類
+                if ((category.Nodes != null && category.Nodes.Any()) ||
+                    (category.SubCategories != null && category.SubCategories.Any()))
+                {
+                    categories.Add(category);
+                }
+            }
+
+            return categories;
         }
 
         /// <summary>
@@ -168,6 +142,15 @@ namespace ActuatorApp.ViewModels
         }
 
         /// <summary>
+        /// 根據型號新增節點
+        /// </summary>
+        public void AddNodeByModel(string modelNumber)
+        {
+            var node = _nodeFactory.CreateNodeViewModel(modelNumber);
+            Network.Nodes.Add(node);
+        }
+
+        /// <summary>
         /// 新增參數節點
         /// </summary>
         public void AddParameterNode(string paramName)
@@ -175,6 +158,11 @@ namespace ActuatorApp.ViewModels
             var node = new ParameterNodeViewModel(paramName);
             Network.Nodes.Add(node);
         }
+
+        /// <summary>
+        /// 取得產品目錄
+        /// </summary>
+        public ProductCatalog GetCatalog() => _catalog;
     }
 
     #region 輔助類別

@@ -13,6 +13,7 @@
     <Reference Include="System.Windows" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ActuatorApp.Core\ActuatorApp.Core.csproj" />
     <ProjectReference Include="..\NodeNetworkToolkit\NodeNetworkToolkit.csproj" />
     <ProjectReference Include="..\NodeNetwork\NodeNetwork.csproj" />
   </ItemGroup>

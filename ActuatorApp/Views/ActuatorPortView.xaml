@@ -1,0 +1,54 @@
+﻿<UserControl x:Class="ActuatorApp.Views.ActuatorPortView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:views="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
+             xmlns:local="clr-namespace:ActuatorApp.Views"
+             mc:Ignorable="d" 
+             d:DesignHeight="100" d:DesignWidth="100">
+    <UserControl.Resources>
+        <!-- 電流端口 (藍色圓形) -->
+        <ControlTemplate x:Key="{x:Static local:ActuatorPortView.PowerPortTemplateKey}" 
+                         TargetType="views:PortView">
+            <Viewbox StretchDirection="Both" Stretch="Uniform">
+                <Grid Width="20" Height="20">
+                    <Ellipse Fill="#2196F3" Width="15" Height="15" 
+                             HorizontalAlignment="Center" VerticalAlignment="Center"
+                             Stroke="#1565C0" StrokeThickness="1"/>
+                </Grid>
+            </Viewbox>
+        </ControlTemplate>
+
+        <!-- 二進制信號端口 (灰色方形) -->
+        <ControlTemplate x:Key="{x:Static local:ActuatorPortView.BinaryDataPortTemplateKey}" 
+                         TargetType="views:PortView">
+            <Viewbox StretchDirection="Both" Stretch="Uniform">
+                <Grid Width="20" Height="20">
+                    <Rectangle Fill="#607D8B" Width="12" Height="12" 
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Stroke="#455A64" StrokeThickness="1"/>
+                </Grid>
+            </Viewbox>
+        </ControlTemplate>
+
+        <!-- 參數端口 (黃色菱形) -->
+        <ControlTemplate x:Key="{x:Static local:ActuatorPortView.ParameterPortTemplateKey}" 
+                         TargetType="views:PortView">
+            <Viewbox StretchDirection="Both" Stretch="Uniform">
+                <Grid Width="20" Height="20">
+                    <Rectangle Fill="#FFC107" Width="11" Height="11" 
+                               HorizontalAlignment="Center" VerticalAlignment="Center"
+                               Stroke="#FF8F00" StrokeThickness="1"
+                               RenderTransformOrigin="0.5,0.5">
+                        <Rectangle.RenderTransform>
+                            <RotateTransform Angle="45"/>
+                        </Rectangle.RenderTransform>
+                    </Rectangle>
+                </Grid>
+            </Viewbox>
+        </ControlTemplate>
+    </UserControl.Resources>
+
+    <views:PortView x:Name="PortView" RenderTransformOrigin="0.5,0.5"/>
+</UserControl>

@@ -1,0 +1,219 @@
+﻿<Window x:Class="ActuatorApp.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:views="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
+        xmlns:local="clr-namespace:ActuatorApp.Views"
+        xmlns:vm="clr-namespace:ActuatorApp.ViewModels"
+        mc:Ignorable="d"
+        Title="ActuatorApp - 電動推桿控制系統節點編輯器" 
+        Height="700" Width="1200"
+        WindowStartupLocation="CenterScreen">
+    
+    <Window.Resources>
+        <!-- 節點項目模板 -->
+        <DataTemplate x:Key="NodeItemTemplate" DataType="{x:Type vm:NodeItemViewModel}">
+            <Border Background="#F5F5F5" 
+                    BorderBrush="#E0E0E0" 
+                    BorderThickness="1" 
+                    CornerRadius="4"
+                    Margin="2"
+                    Padding="8,5"
+                    Cursor="Hand">
+                <TextBlock Text="{Binding Name}" 
+                           FontSize="12"
+                           HorizontalAlignment="Center"/>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+    
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="280"/>
+            <ColumnDefinition Width="5"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- 標題列 -->
+        <Border Grid.Row="0" Grid.ColumnSpan="3" 
+                Background="#37474F" Padding="10">
+            <TextBlock Text="電動推桿控制系統 - 節點編輯器" 
+                       Foreground="White" 
+                       FontSize="16" 
+                       FontWeight="Bold"/>
+        </Border>
+
+        <!-- 左側面板：節點列表 (TabControl) -->
+        <Grid Grid.Row="1" Grid.Column="0" Background="#FAFAFA">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="*"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+            
+            <!-- TabControl：產品分類 -->
+            <TabControl x:Name="NodeCategoryTabs" 
+                        Grid.Row="0"
+                        Margin="5">
+                <!-- Control Box -->
+                <TabItem Header="Control Box">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="ControlBoxNodes"
+                                      ItemTemplate="{StaticResource NodeItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </TabItem>
+                
+                <!-- Actuator -->
+                <TabItem Header="Actuator">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="ActuatorNodes"
+                                      ItemTemplate="{StaticResource NodeItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </TabItem>
+                
+                <!-- Controls -->
+                <TabItem Header="Controls">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <!-- Embedded -->
+                            <Expander Header="Embedded" IsExpanded="True" Margin="0,0,0,5">
+                                <ItemsControl x:Name="EmbeddedNodes"
+                                              ItemTemplate="{StaticResource NodeItemTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </Expander>
+                            
+                            <!-- Wire Handset -->
+                            <Expander Header="Wire Handset" IsExpanded="True" Margin="0,0,0,5">
+                                <ItemsControl x:Name="WireHandsetNodes"
+                                              ItemTemplate="{StaticResource NodeItemTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </Expander>
+                            
+                            <!-- Wireless Handset -->
+                            <Expander Header="Wireless Handset" IsExpanded="True">
+                                <ItemsControl x:Name="WirelessHandsetNodes"
+                                              ItemTemplate="{StaticResource NodeItemTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </Expander>
+                        </StackPanel>
+                    </ScrollViewer>
+                </TabItem>
+                
+                <!-- Accessories -->
+                <TabItem Header="Accessories">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="AccessoryNodes"
+                                      ItemTemplate="{StaticResource NodeItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </TabItem>
+                
+                <!-- Power Supply -->
+                <TabItem Header="Power Supply">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="PowerSupplyNodes"
+                                      ItemTemplate="{StaticResource NodeItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </TabItem>
+                
+                <!-- Battery -->
+                <TabItem Header="Battery">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <ItemsControl x:Name="BatteryNodes"
+                                      ItemTemplate="{StaticResource NodeItemTemplate}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </TabItem>
+            </TabControl>
+            
+            <!-- 底部按鈕 -->
+            <StackPanel Grid.Row="1" Margin="10">
+                <Button x:Name="AddParameterButton" 
+                        Content="新增參數節點" 
+                        Padding="10,5"
+                        Margin="0,0,0,5"/>
+                <Button x:Name="AutoLayoutButton" 
+                        Content="自動佈局" 
+                        Padding="10,5"/>
+            </StackPanel>
+        </Grid>
+
+        <!-- 分隔線 -->
+        <GridSplitter Grid.Row="1" Grid.Column="1" 
+                      VerticalAlignment="Stretch" 
+                      HorizontalAlignment="Stretch"
+                      Background="#E0E0E0"/>
+
+        <!-- 右側：節點編輯器畫布 -->
+        <views:NetworkView x:Name="NetworkView" 
+                           Grid.Row="1" Grid.Column="2"
+                           Background="#ECEFF1">
+            <views:NetworkView.NetworkBackground>
+                <DrawingBrush TileMode="Tile" 
+                              Viewport="0,0,50,50" 
+                              ViewportUnits="Absolute">
+                    <DrawingBrush.Drawing>
+                        <GeometryDrawing>
+                            <GeometryDrawing.Pen>
+                                <Pen Brush="#E0E0E0" Thickness="0.5"/>
+                            </GeometryDrawing.Pen>
+                            <GeometryDrawing.Geometry>
+                                <GeometryGroup>
+                                    <LineGeometry StartPoint="0,0" EndPoint="50,0"/>
+                                    <LineGeometry StartPoint="0,0" EndPoint="0,50"/>
+                                </GeometryGroup>
+                            </GeometryDrawing.Geometry>
+                        </GeometryDrawing>
+                    </DrawingBrush.Drawing>
+                </DrawingBrush>
+            </views:NetworkView.NetworkBackground>
+        </views:NetworkView>
+    </Grid>
+</Window>

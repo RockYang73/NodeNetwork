@@ -102,6 +102,13 @@ namespace ActuatorApp.Views
                     WirelessHandsetNodes.ItemsSource = wirelessHandset.Nodes;
                     SetupNodeItemClick(WirelessHandsetNodes);
                 }
+
+                var handheld = controls.SubCategories.FirstOrDefault(s => s.Name == "Handheld");
+                if (handheld != null)
+                {
+                    HandheldNodes.ItemsSource = handheld.Nodes;
+                    SetupNodeItemClick(HandheldNodes);
+                }
             }
 
             // Accessories

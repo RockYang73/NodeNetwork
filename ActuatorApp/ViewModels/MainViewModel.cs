@@ -108,18 +108,25 @@ namespace ActuatorApp.ViewModels
                                 new NodeItemViewModel("TFH28", () => new THNodeViewModel("TFH28")),
                                 new NodeItemViewModel("TFH34", () => new THNodeViewModel("TFH34")),
                             }
+                        },
+                        new NodeSubCategory
+                        {
+                            Name = "Handheld",
+                            Nodes = new ObservableCollection<NodeItemViewModel>
+                            {
+                                new NodeItemViewModel("THP", () => new THPNodeViewModel("THP")),
+                            }
                         }
                     }
                 },
 
-                // Accessories (TYC/THP 系列)
+                // Accessories (TYC 系列 - 延長線/分接線)
                 new NodeCategory
                 {
                     Name = "Accessories",
                     Nodes = new ObservableCollection<NodeItemViewModel>
                     {
                         new NodeItemViewModel("TYC", () => new TYCNodeViewModel("TYC")),
-                        new NodeItemViewModel("THP", () => new THPNodeViewModel("THP")),
                     }
                 },
 

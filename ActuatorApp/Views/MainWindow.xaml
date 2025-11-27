@@ -116,8 +116,20 @@
                             </Expander>
                             
                             <!-- Wireless Handset -->
-                            <Expander Header="Wireless Handset" IsExpanded="True">
+                            <Expander Header="Wireless Handset" IsExpanded="True" Margin="0,0,0,5">
                                 <ItemsControl x:Name="WirelessHandsetNodes"
+                                              ItemTemplate="{StaticResource NodeItemTemplate}">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <WrapPanel/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                            </Expander>
+                            
+                            <!-- Handheld -->
+                            <Expander Header="Handheld" IsExpanded="True">
+                                <ItemsControl x:Name="HandheldNodes"
                                               ItemTemplate="{StaticResource NodeItemTemplate}">
                                     <ItemsControl.ItemsPanel>
                                         <ItemsPanelTemplate>

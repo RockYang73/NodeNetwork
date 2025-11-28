@@ -1,9 +1,11 @@
-﻿using System;
+using System;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Media;
+using NodeNetwork.Views; // Added
+using NodeNetwork.Utilities.WPF; // Added
 
 namespace NodeNetwork.Views.Controls
 {
@@ -62,7 +64,7 @@ namespace NodeNetwork.Views.Controls
 
         #region StartDragGesture
         public static readonly DependencyProperty StartDragGestureProperty = DependencyProperty.Register(nameof(StartDragGesture),
-            typeof(MouseGesture), typeof(DragCanvas), new PropertyMetadata(new MouseGesture(MouseAction.RightClick)));
+            typeof(MouseGesture), typeof(DragCanvas), new PropertyMetadata(new MouseGesture(MouseAction.LeftClick)));
 
         /// <summary>
         /// This mouse gesture starts a drag on the canvas. Left click by default.

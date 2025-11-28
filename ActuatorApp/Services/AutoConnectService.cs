@@ -34,6 +34,9 @@ namespace ActuatorApp.Services
                         // 檢查 PortType 是否相同
                         if (inputPort.PortType != outputPort.PortType) continue;
 
+                        // 檢查輸出端口是否已滿
+                        if (output.Connections.Count >= output.MaxConnections) continue;
+
                         // 建立臨時的 PendingConnection 進行驗證
                         var pending = new PendingConnectionViewModel(network)
                         {

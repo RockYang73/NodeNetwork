@@ -83,6 +83,16 @@ namespace ActuatorApp.ViewModels
         /// </summary>
         public ReactiveCommand<Unit, Unit> GroupNodesCommand { get; }
 
+        /// <summary>
+        /// 解散群組命令
+        /// </summary>
+        public ReactiveCommand<Unit, Unit> UngroupNodesCommand { get; }
+
+        /// <summary>
+        /// 進入群組命令
+        /// </summary>
+        public ReactiveCommand<Unit, Unit> OpenGroupCommand { get; }
+
         public MainViewModel(IProductRepository productRepository, IAutoConnectService autoConnectService) // Modified constructor
         {
             _productRepository = productRepository; // Store injected repository
@@ -108,18 +118,47 @@ namespace ActuatorApp.ViewModels
                 EntranceNodeFactory = () => new NodeViewModel { Name = "Group Input" },
                 ExitNodeFactory = () => new NodeViewModel { Name = "Group Output" },
                 IOBindingFactory = (groupNode, entranceNode, exitNode) =>
-                    new ValueNodeGroupIOBinding(groupNode, entranceNode, exitNode)
+                    new ActuatorGroupIOBinding(groupNode, entranceNode, exitNode)
             };
 
             // 群組節點命令
+            var canGroup = this.WhenAnyObservable(vm => vm.Network.SelectedNodes.CountChanged).Select(c => c > 1);
             GroupNodesCommand = ReactiveCommand.Create(() =>
             {
                 var selectedNodes = Network.SelectedNodes.Items.ToList();
                 if (selectedNodes.Any())
                 {
-                    _grouper.MergeIntoGroup(Network, selectedNodes);
+                    var binding = _grouper.MergeIntoGroup(Network, selectedNodes);
+                    if (binding.GroupNode is GroupNodeViewModel groupVm)
+                    {
+                        groupVm.IOBinding = binding;
+                    }
                 }
-            });
+            }, canGroup);
+
+            // 判斷是否選中了一個群組節點
+            var isGroupNodeSelected = this.WhenAnyValue(vm => vm.Network)
+                .Select(net => net.SelectedNodes.Connect())
+                .Switch()
+                .Select(_ => Network.SelectedNodes.Count == 1 && Network.SelectedNodes.Items.First() is GroupNodeViewModel);
+
+            // 解散群組命令
+            UngroupNodesCommand = ReactiveCommand.Create(() =>
+            {
+                var selectedGroupNode = (GroupNodeViewModel)Network.SelectedNodes.Items.First();
+                if (selectedGroupNode.IOBinding != null)
+                {
+                    _grouper.Ungroup(selectedGroupNode.IOBinding);
+                }
+            }, isGroupNodeSelected);
+
+            // 進入群組命令
+            OpenGroupCommand = ReactiveCommand.Create(() =>
+            {
+                var selectedGroupNode = (GroupNodeViewModel)Network.SelectedNodes.Items.First();
+                // TODO: Implement navigation logic (NetworkStack)
+                System.Diagnostics.Debug.WriteLine($"Opening group: {selectedGroupNode.Name}");
+            }, isGroupNodeSelected);
 
             // 自動佈局
             var layouter = new ForceDirectedLayouter();

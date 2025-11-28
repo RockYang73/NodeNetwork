@@ -6,6 +6,8 @@
         xmlns:views="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
         xmlns:local="clr-namespace:ActuatorApp.Views"
         xmlns:vm="clr-namespace:ActuatorApp.ViewModels"
+        xmlns:nodes="clr-namespace:ActuatorApp.ViewModels.Nodes"
+        xmlns:converters="clr-namespace:ActuatorApp.Views.Converters"
         mc:Ignorable="d"
         Title="ActuatorApp - 電動推桿控制系統節點編輯器" 
         Height="700" Width="1200"
@@ -26,6 +28,34 @@
                            HorizontalAlignment="Center"/>
             </Border>
         </DataTemplate>
+        
+        <converters:TypeVisibilityCheck x:Key="TypeCheckToVisibility"/>
+        
+        <ContextMenu x:Key="nodeMenu" x:Shared="True">
+            <!-- Group nodes -->
+            <!-- We can bind to Window.DataContext because the ContextMenu is not in the visual tree the same way -->
+            <!-- But ElementName binding is tricky. Usually Proxy is needed or RelativeSource FindAncestor Window -->
+            <!-- However, NodeView's DataContext is NodeViewModel. We need MainViewModel. -->
+            <!-- Actually, commands like GroupNodesCommand are in MainViewModel. -->
+            <!-- BUT, when right clicking a node, the DataContext of the menu item is the NodeViewModel (via PlacementTarget). -->
+            <!-- So we need to reach out to MainViewModel. -->
+            <!-- Binding to Application.Current.MainWindow.DataContext is a common workaround if x:Name fails. -->
+            
+            <!-- Group Selected Nodes (Global command, operates on selection) -->
+            <!-- Note: This command is in MainViewModel. -->
+            <MenuItem Header="群組選取節點" 
+                      Command="{Binding DataContext.GroupNodesCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+            
+            <!-- Ungroup (Only for GroupNodeViewModel) -->
+            <MenuItem Header="解散群組" 
+                      Command="{Binding DataContext.UngroupNodesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                      Visibility="{Binding Converter={StaticResource TypeCheckToVisibility}, ConverterParameter={x:Type nodes:GroupNodeViewModel}}"/>
+            
+            <!-- Open Group (Only for GroupNodeViewModel) -->
+            <MenuItem Header="進入群組" 
+                      Command="{Binding DataContext.OpenGroupCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                      Visibility="{Binding Converter={StaticResource TypeCheckToVisibility}, ConverterParameter={x:Type nodes:GroupNodeViewModel}}"/>
+        </ContextMenu>
     </Window.Resources>
     
     <Grid>
@@ -212,6 +242,11 @@
         <views:NetworkView x:Name="NetworkView" 
                            Grid.Row="1" Grid.Column="2"
                            Background="#ECEFF1">
+            <views:NetworkView.Resources>
+                <Style TargetType="views:NodeView">
+                    <Setter Property="ContextMenu" Value="{StaticResource nodeMenu}" />
+                </Style>
+            </views:NetworkView.Resources>
             <views:NetworkView.NetworkBackground>
                 <DrawingBrush TileMode="Tile" 
                               Viewport="0,0,50,50" 

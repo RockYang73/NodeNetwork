@@ -73,3 +73,46 @@ Output = new ValueNodeOutputViewModel<int?> { Value = sum };
 
 ### 6.5 數據流影響
 新的資料管理層使得 `ActuatorApp` 能夠讀取舊系統中定義的詳細產品參數和圖像路徑。這些資料未來可以被整合到 `ProductCatalog` 或各個 `NodeViewModel` 中，用於豐富節點的顯示資訊、配置選項或提供更精細的連線驗證規則。此改動增強了系統對產品資料的處理能力，為後續的參數調整功能開發奠定了基礎。
+
+## 7. 自動連接服務 (Auto-Connect Service)
+
+為了提升使用者體驗，`ActuatorApp` 實作了節點自動連接機制。此功能被封裝在獨立的服務層中，以確保職責分離與可測試性。
+
+### 7.1 服務架構
+*   **介面定義 (`IAutoConnectService`)**: 位於 `ActuatorApp/Services/IAutoConnectService.cs`，定義了 `TryAutoConnect` 方法契約。
+*   **具體實作 (`AutoConnectService`)**: 位於 `ActuatorApp/Services/AutoConnectService.cs`。此服務負責在節點加入網路時，自動掃描現有節點並建立相容的連線。
+
+### 7.2 連接邏輯
+當一個新節點被加入到畫布時，`AutoConnectService` 會執行以下步驟：
+1.  **掃描輸入**: 遍歷新節點的所有輸入端口 (Input Ports)。
+2.  **尋找匹配**: 對於每個未連接的輸入端口，遍歷網路上現有所有節點的輸出端口 (Output Ports)。
+3.  **相容性驗證**:
+    *   **端口類型檢查**: 確保輸入與輸出的 `PortType` (例如 Power, BinaryData) 相同。
+    *   **規則驗證**: 呼叫 `ConnectionRules.ValidateConnection` 進行更深層的業務邏輯檢查 (例如電流方向必須是 TP -> TBB -> TC)。
+4.  **建立連線**: 一旦找到第一個符合條件且通過驗證的輸出端口，即自動建立連線並停止該輸入端口的搜尋。
+
+### 7.3 整合方式
+*   **依賴注入**: `AutoConnectService` 在 `App.xaml.cs` 中被實例化，並注入到 `MainViewModel` 中。
+*   **觸發時機**: 在 `MainViewModel.AddNode` 方法中，當節點被添加到 `Network.Nodes` 集合後，立即呼叫 `_autoConnectService.TryAutoConnect` 觸發自動連接流程。
+
+## 8. 群組節點 (Group Node) 機制
+
+為了支持複雜網路的模組化與封裝，`ActuatorApp` 實現了節點群組功能，允許將多個節點合併為一個單一的 `Group Node`。
+
+### 8.1 架構與邏輯
+*   **NodeGrouper**: 核心控制器，位於 `NodeNetworkToolkit/Group/NodeGrouper.cs`。負責：
+    *   將選定的節點從父網路移動到新的子網路 (`Subnet`)。
+    *   在父網路中建立一個代表該子網路的 `Group Node`。
+    *   處理跨越群組邊界的連線 (Border Connections)。
+*   **IOBinding (`ActuatorGroupIOBinding`)**: 自定義的 I/O 綁定邏輯，繼承自 `ValueNodeGroupIOBinding`。
+    *   **端口映射**: 當有連線跨越群組邊界時，它負責在 Group Node 上建立對應的「代理端口 (Proxy Port)」。
+    *   **命名與方向**:
+        *   **外部輸入 (Border Input)**: 當外部節點的 Output 連接到群組內部的 Input 時，Group Node 上會建立一個 **Input** 端口，命名為 **"In"**，位於節點左側。
+        *   **外部輸出 (Border Output)**: 當群組內部的 Output 連接到外部節點的 Input 時，Group Node 上會建立一個 **Output** 端口，命名為 **"Out"**，位於節點右側。
+    *   **類型保留**: 代理端口會保留原始連線端口的 `PortType` (如 Power, BinaryData)。
+    *   **自動清理**: 當連接到代理端口的連線被移除時，該代理端口會自動從 Group Node 上消失，保持介面整潔。
+
+### 8.2 交互操作
+*   **群組化 (Grouping)**: 選取多個節點 -> 右鍵選單 ->「群組選取節點」。(前提：選取的節點必須形成一個單一的連通子圖)。
+*   **解散群組 (Ungrouping)**: 選取 Group Node -> 右鍵選單 ->「解散群組」。
+*   **進入群組 (Enter Group)**: 選取 Group Node -> 右鍵選單 ->「進入群組」 (或雙擊節點，視實作而定)。

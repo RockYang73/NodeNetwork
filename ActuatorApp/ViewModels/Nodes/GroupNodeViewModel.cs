@@ -1,4 +1,5 @@
 using NodeNetwork;
+using NodeNetwork.Toolkit.Group; // Added
 using NodeNetwork.ViewModels;
 using NodeNetwork.Views;
 using ReactiveUI;
@@ -16,6 +17,8 @@ namespace ActuatorApp.ViewModels.Nodes
         /// The sub-network contained within this group node.
         /// </summary>
         public NetworkViewModel Subnet { get; }
+
+        public NodeGroupIOBinding IOBinding { get; set; }
 
         public GroupNodeViewModel(NetworkViewModel subnet)
         {

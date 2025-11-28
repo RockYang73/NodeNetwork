@@ -62,7 +62,7 @@ namespace NodeNetwork.Views.Controls
 
         #region StartDragGesture
         public static readonly DependencyProperty StartDragGestureProperty = DependencyProperty.Register(nameof(StartDragGesture),
-            typeof(MouseGesture), typeof(DragCanvas), new PropertyMetadata(new MouseGesture(MouseAction.LeftClick)));
+            typeof(MouseGesture), typeof(DragCanvas), new PropertyMetadata(new MouseGesture(MouseAction.RightClick)));
 
         /// <summary>
         /// This mouse gesture starts a drag on the canvas. Left click by default.

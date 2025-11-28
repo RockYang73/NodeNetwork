@@ -150,7 +150,7 @@ namespace NodeNetwork.Views
 
         #region StartCutGesture
         public static readonly DependencyProperty StartCutGestureProperty = DependencyProperty.Register(nameof(StartCutGesture),
-            typeof(MouseGesture), typeof(NetworkView), new PropertyMetadata(new MouseGesture(MouseAction.RightClick)));
+            typeof(MouseGesture), typeof(NetworkView), new PropertyMetadata(new MouseGesture(MouseAction.MiddleClick)));
 
         /// <summary>
         /// This mouse gesture starts a cut, making the cutline visible. Right click by default.
@@ -164,7 +164,7 @@ namespace NodeNetwork.Views
 
         #region StartSelectionRectangleGesture
         public static readonly DependencyProperty StartSelectionRectangleGestureProperty = DependencyProperty.Register(nameof(StartSelectionRectangleGesture),
-            typeof(MouseGesture), typeof(NetworkView), new PropertyMetadata(new MouseGesture(MouseAction.LeftClick, ModifierKeys.Shift)));
+            typeof(MouseGesture), typeof(NetworkView), new PropertyMetadata(new MouseGesture(MouseAction.LeftClick)));
 
         /// <summary>
         /// This mouse gesture starts a selection, making the selection rectangle visible. Left click + Shift by default.
@@ -407,6 +407,13 @@ namespace NodeNetwork.Views
                 {
                     if (ViewModel != null && StartSelectionRectangleGesture.Matches(this, e))
                     {
+                        // Don't start selection if over a node or pending connection
+                        if (WPFUtils.FindParent<NodeView>((DependencyObject)e.OriginalSource) != null ||
+                            WPFUtils.FindParent<PendingConnectionView>((DependencyObject)e.OriginalSource) != null)
+                        {
+                            return;
+                        }
+
                         CaptureMouse();
                         dragCanvas.IsDraggingEnabled = false;
                         ViewModel.StartRectangleSelection();

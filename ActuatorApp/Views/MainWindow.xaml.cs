@@ -44,6 +44,10 @@ namespace ActuatorApp.Views
                 this.BindCommand(ViewModel, vm => vm.AutoLayout, v => v.AutoLayoutButton)
                     .DisposeWith(d);
 
+                // 綁定群組節點按鈕
+                this.BindCommand(ViewModel, vm => vm.GroupNodesCommand, v => v.GroupNodesButton)
+                    .DisposeWith(d);
+
                 // 綁定節點列表
                 BindNodeLists();
 

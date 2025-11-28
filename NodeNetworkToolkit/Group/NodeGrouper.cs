@@ -77,6 +77,13 @@ namespace NodeNetwork.Toolkit.Group
                 return null;
             }
 
+            // Connectivity restriction: Check if the selected nodes form a single connected subgraph.
+            // If they are split into more than 1 subgraph, it means they are not all connected to each other.
+            if (GraphAlgorithms.FindSubGraphs(groupNodesSet).Count() > 1)
+            {
+                return null;
+            }
+
             // Create new empty group
             var subnet = SubNetworkFactory();
 

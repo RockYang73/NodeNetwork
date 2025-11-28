@@ -21,8 +21,11 @@ namespace ActuatorApp
             string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Database.db");
             var productRepository = new ProductRepository($"Data Source={dbPath}");
 
+            // 實例化 AutoConnectService
+            var autoConnectService = new ActuatorApp.Services.AutoConnectService();
+
             // 將 MainViewModel 設定為 DataContext 和 ViewModel
-            var viewModel = new MainViewModel(productRepository);
+            var viewModel = new MainViewModel(productRepository, autoConnectService);
             var mainWindow = new MainWindow
             {
                 ViewModel = viewModel

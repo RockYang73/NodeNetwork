@@ -58,7 +58,8 @@
             <!-- TabControl：產品分類 -->
             <TabControl x:Name="NodeCategoryTabs" 
                         Grid.Row="0"
-                        Margin="5">
+                        Margin="5"
+                        SelectedIndex="{Binding SelectedTabIndex}">
                 <!-- Control Box -->
                 <TabItem Header="Control Box">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
@@ -189,6 +190,10 @@
             <StackPanel Grid.Row="1" Margin="10">
                 <Button x:Name="AddParameterButton" 
                         Content="新增參數節點" 
+                        Padding="10,5"
+                        Margin="0,0,0,5"/>
+                <Button x:Name="GroupNodesButton" 
+                        Content="群組選取節點" 
                         Padding="10,5"
                         Margin="0,0,0,5"/>
                 <Button x:Name="AutoLayoutButton" 

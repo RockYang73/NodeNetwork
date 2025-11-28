@@ -8,8 +8,10 @@ using ActuatorApp.Adapters;
 using ActuatorApp.Core.Enums;
 using ActuatorApp.Core.Products;
 using ActuatorApp.Core.Interfaces; // Added
+using ActuatorApp.Services; // Added
 using ActuatorApp.ViewModels.Nodes;
 using DynamicData;
+using NodeNetwork.Toolkit.Group; // Added for NodeGrouper
 using NodeNetwork.Toolkit.Layout.ForceDirected;
 using NodeNetwork.ViewModels;
 using ReactiveUI;
@@ -37,6 +39,16 @@ namespace ActuatorApp.ViewModels
         private readonly IProductRepository _productRepository;
 
         /// <summary>
+        /// 自動連接服務
+        /// </summary>
+        private readonly IAutoConnectService _autoConnectService;
+
+        /// <summary>
+        /// 節點群組化工具
+        /// </summary>
+        private readonly NodeGrouper _grouper;
+
+        /// <summary>
         /// 節點網路
         /// </summary>
         public NetworkViewModel Network { get; }
@@ -45,6 +57,16 @@ namespace ActuatorApp.ViewModels
         /// 節點分類集合 (對應 TabControl)
         /// </summary>
         public ObservableCollection<NodeCategory> NodeCategories { get; }
+
+        /// <summary>
+        /// 目前選中的節點分類索引
+        /// </summary>
+        public int SelectedTabIndex
+        {
+            get => _selectedTabIndex;
+            set => this.RaiseAndSetIfChanged(ref _selectedTabIndex, value);
+        }
+        private int _selectedTabIndex;
 
         /// <summary>
         /// 自動佈局命令
@@ -56,9 +78,15 @@ namespace ActuatorApp.ViewModels
         /// </summary>
         public ReactiveCommand<Unit, Unit> LoadProductDataCommand { get; }
 
-        public MainViewModel(IProductRepository productRepository) // Modified constructor
+        /// <summary>
+        /// 群組節點命令
+        /// </summary>
+        public ReactiveCommand<Unit, Unit> GroupNodesCommand { get; }
+
+        public MainViewModel(IProductRepository productRepository, IAutoConnectService autoConnectService) // Modified constructor
         {
             _productRepository = productRepository; // Store injected repository
+            _autoConnectService = autoConnectService; // Store injected service
 
             // 從 Core 層載入產品目錄
             _catalog = ProductCatalog.CreateDefault();
@@ -68,6 +96,30 @@ namespace ActuatorApp.ViewModels
 
             // 根據 ProductCatalog 建立 NodeCategories
             NodeCategories = BuildNodeCategoriesFromCatalog();
+
+            // 設定預設選中 "Power Supply" 分類 (索引 4)
+            SelectedTabIndex = 4;
+
+            // 初始化 NodeGrouper
+            _grouper = new NodeGrouper
+            {
+                GroupNodeFactory = (subnet) => new GroupNodeViewModel(subnet),
+                SubNetworkFactory = () => new NetworkViewModel(),
+                EntranceNodeFactory = () => new NodeViewModel { Name = "Group Input" },
+                ExitNodeFactory = () => new NodeViewModel { Name = "Group Output" },
+                IOBindingFactory = (groupNode, entranceNode, exitNode) =>
+                    new ValueNodeGroupIOBinding(groupNode, entranceNode, exitNode)
+            };
+
+            // 群組節點命令
+            GroupNodesCommand = ReactiveCommand.Create(() =>
+            {
+                var selectedNodes = Network.SelectedNodes.Items.ToList();
+                if (selectedNodes.Any())
+                {
+                    _grouper.MergeIntoGroup(Network, selectedNodes);
+                }
+            });
 
             // 自動佈局
             var layouter = new ForceDirectedLayouter();
@@ -168,6 +220,7 @@ namespace ActuatorApp.ViewModels
         public void AddNode(NodeViewModel node)
         {
             Network.Nodes.Add(node);
+            _autoConnectService.TryAutoConnect(Network, node);
         }
 
         /// <summary>
@@ -176,7 +229,7 @@ namespace ActuatorApp.ViewModels
         public void AddNodeByModel(string modelNumber)
         {
             var node = _nodeFactory.CreateNodeViewModel(modelNumber);
-            Network.Nodes.Add(node);
+            AddNode(node); // 改為呼叫 AddNode 以觸發自動連接
         }
 
         /// <summary>
@@ -185,7 +238,7 @@ namespace ActuatorApp.ViewModels
         public void AddParameterNode(string paramName)
         {
             var node = new ParameterNodeViewModel(paramName);
-            Network.Nodes.Add(node);
+            AddNode(node); // 改為呼叫 AddNode 以觸發自動連接
         }
 
         /// <summary>

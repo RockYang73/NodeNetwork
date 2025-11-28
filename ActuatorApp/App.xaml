@@ -1,8 +1,7 @@
 ﻿<Application x:Class="ActuatorApp.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:ActuatorApp"
-             StartupUri="Views/MainWindow.xaml">
+             xmlns:local="clr-namespace:ActuatorApp">
     <Application.Resources>
          
     </Application.Resources>

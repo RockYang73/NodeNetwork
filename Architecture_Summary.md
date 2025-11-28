@@ -49,3 +49,27 @@ Output = new ValueNodeOutputViewModel<int?> { Value = sum };
 *   **ReactiveUI**: 用於 MVVM 綁定與反應式邏輯。
 *   **DynamicData**: 用於高效管理集合 (如節點列表、連線列表) 的變更通知。
 *   **Splat**: 用於依賴注入 (Service Location) 與 View 註冊。
+
+## 6. 資料管理擴充 (Data Management Extension)
+
+為了整合舊有系統的產品資料與參數設定，`ActuatorApp` 專案導入了新的資料管理層。此舉嚴格遵循了 Core/UI 分離的原則，確保了業務邏輯與資料存取邏輯的解耦。
+
+### 6.1 資源移植
+*   **產品圖片**: 從 `DG_Programmer_Git/PGEProgrammer/Products` 資料夾將圖片資源移植到 `ActuatorApp/Assets/Products`。
+*   **資料庫**: 將包含產品參數定義的 SQLite 資料庫檔案 `Database.db` 從 `DG_Programmer_Git/PGEProgrammer/Category/PGE1/Database.db` 複製到 `ActuatorApp/Assets/Database.db`。
+*   **部署配置**: 修改 `ActuatorApp.csproj`，確保上述 `Assets` 資料夾及其內容會在應用程式建置時自動複製到輸出目錄，確保執行時資料的可存取性。
+
+### 6.2 新增資料基礎設施層
+為提供專責的資料存取能力，新增了一個專案：
+*   **`ActuatorApp.Infrastructure`**: 一個 .NET Standard 2.0 的類別庫，用於封裝所有與外部資料來源（如 `Database.db`）互動的邏輯。
+    *   **依賴**: 引用 `Microsoft.Data.Sqlite` 作為 SQLite 驅動，並使用 `Dapper` 作為輕量級 ORM 框架以簡化資料映射操作。
+
+### 6.3 實體 (Entities) 定義
+在 **`ActuatorApp.Core/Entities`** 資料夾中，根據舊有系統的資料表結構 (`PGE開發文檔.md` 中定義的 `Touch`, `Tcsync`, `TCS`, `Controlbox`, `Control`, `Columns`, `Actuator`, `Actlevel`)，定義了對應的 C# 實體類別 (POCOs)。這些實體類別是純粹的資料容器，不包含任何業務邏輯或資料庫存取細節，可被 Core 層和 UI 層共享。
+
+### 6.4 Repository 模式實作
+*   **介面定義**: 在 **`ActuatorApp.Core/Interfaces/IProductRepository.cs`** 中定義了資料存取介面，例如 `GetTcsyncsAsync()`, `GetControlsAsync()` 等，規範了資料操作的契約。
+*   **具體實作**: 在 **`ActuatorApp.Infrastructure/Repositories/ProductRepository.cs`** 中，實作了 `IProductRepository` 介面。此實作負責建立 SQLite 資料庫連線，並利用 Dapper 執行 SQL 查詢，將查詢結果映射到 Core 層定義的實體對象。
+
+### 6.5 數據流影響
+新的資料管理層使得 `ActuatorApp` 能夠讀取舊系統中定義的詳細產品參數和圖像路徑。這些資料未來可以被整合到 `ProductCatalog` 或各個 `NodeViewModel` 中，用於豐富節點的顯示資訊、配置選項或提供更精細的連線驗證規則。此改動增強了系統對產品資料的處理能力，為後續的參數調整功能開發奠定了基礎。

@@ -1,4 +1,9 @@
-﻿using System.Windows;
+﻿using System; // Added
+using System.IO;
+using System.Windows;
+using ActuatorApp.Infrastructure.Repositories;
+using ActuatorApp.ViewModels;
+using ActuatorApp.Views; // Added
 using NodeNetwork;
 
 namespace ActuatorApp
@@ -11,6 +16,18 @@ namespace ActuatorApp
             
             // 註冊 NodeNetwork 預設視圖
             NNViewRegistrar.RegisterSplat();
+
+            // 實例化 ProductRepository
+            string dbPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "Database.db");
+            var productRepository = new ProductRepository($"Data Source={dbPath}");
+
+            // 將 MainViewModel 設定為 DataContext 和 ViewModel
+            var viewModel = new MainViewModel(productRepository);
+            var mainWindow = new MainWindow
+            {
+                ViewModel = viewModel
+            };
+            mainWindow.Show();
         }
     }
 }

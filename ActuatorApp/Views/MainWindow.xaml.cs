@@ -15,7 +15,7 @@ namespace ActuatorApp.Views
         public static readonly DependencyProperty ViewModelProperty =
             DependencyProperty.Register(nameof(ViewModel),
                 typeof(MainViewModel), typeof(MainWindow),
-                new PropertyMetadata(null));
+                new PropertyMetadata(null, (d, e) => ((MainWindow)d).DataContext = e.NewValue));
 
         public MainViewModel ViewModel
         {
@@ -33,9 +33,6 @@ namespace ActuatorApp.Views
         public MainWindow()
         {
             InitializeComponent();
-
-            // 初始化 ViewModel
-            ViewModel = new MainViewModel();
 
             this.WhenActivated(d =>
             {

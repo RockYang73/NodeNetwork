@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.ObjectModel;
+using System.Diagnostics; // Added for Debug.WriteLine
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
 using ActuatorApp.Adapters;
 using ActuatorApp.Core.Enums;
 using ActuatorApp.Core.Products;
+using ActuatorApp.Core.Interfaces; // Added
 using ActuatorApp.ViewModels.Nodes;
 using DynamicData;
 using NodeNetwork.Toolkit.Layout.ForceDirected;
@@ -30,6 +32,11 @@ namespace ActuatorApp.ViewModels
         private readonly NodeNetworkNodeFactory _nodeFactory;
 
         /// <summary>
+        /// 資料庫產品存取介面
+        /// </summary>
+        private readonly IProductRepository _productRepository;
+
+        /// <summary>
         /// 節點網路
         /// </summary>
         public NetworkViewModel Network { get; }
@@ -44,8 +51,15 @@ namespace ActuatorApp.ViewModels
         /// </summary>
         public ReactiveCommand<Unit, Unit> AutoLayout { get; }
 
-        public MainViewModel()
+        /// <summary>
+        /// 載入產品資料命令 (從資料庫)
+        /// </summary>
+        public ReactiveCommand<Unit, Unit> LoadProductDataCommand { get; }
+
+        public MainViewModel(IProductRepository productRepository) // Modified constructor
         {
+            _productRepository = productRepository; // Store injected repository
+
             // 從 Core 層載入產品目錄
             _catalog = ProductCatalog.CreateDefault();
             _nodeFactory = new NodeNetworkNodeFactory(_catalog);
@@ -59,6 +73,21 @@ namespace ActuatorApp.ViewModels
             var layouter = new ForceDirectedLayouter();
             AutoLayout = ReactiveCommand.Create(() =>
                 layouter.Layout(new Configuration { Network = Network }, 10000));
+            
+            // 初始化載入產品資料命令
+            LoadProductDataCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                Debug.WriteLine("Loading Control data from repository...");
+                var controls = await _productRepository.GetControlsAsync();
+                foreach (var control in controls)
+                {
+                    Debug.WriteLine($"- Loaded Control: Id={control.Id}, Name={control.Name}, ImgPath={control.ImgPath}");
+                }
+                Debug.WriteLine("Finished loading Control data.");
+            });
+
+            // 在 ViewModel 初始化時執行載入命令
+            LoadProductDataCommand.Execute().Subscribe();
         }
 
         /// <summary>

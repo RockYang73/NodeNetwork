@@ -69,14 +69,44 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
 
-        <!-- 標題列 -->
-        <Border Grid.Row="0" Grid.ColumnSpan="3" 
-                Background="#37474F" Padding="10">
-            <TextBlock Text="電動推桿控制系統 - 節點編輯器" 
-                       Foreground="White" 
-                       FontSize="16" 
-                       FontWeight="Bold"/>
-        </Border>
+        <!-- Top Toolbar -->
+        <Grid Grid.Row="0" Grid.ColumnSpan="3" Background="White" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/> <!-- Connection & Program -->
+                <ColumnDefinition Width="*"/>    <!-- Spacer -->
+                <ColumnDefinition Width="Auto"/> <!-- File Buttons -->
+            </Grid.ColumnDefinitions>
+
+            <!-- Left Side: Connection & Program -->
+            <StackPanel Orientation="Horizontal" Grid.Column="0">
+                <!-- Connection Check Group -->
+                <GroupBox Header="Connection check" Margin="5,2" BorderBrush="#E0E0E0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <TextBlock Text="COM port" VerticalAlignment="Center" Margin="5,0"/>
+                        <ComboBox ItemsSource="{Binding ComPorts}" SelectedItem="{Binding SelectedComPort}" Width="80" Margin="5"/>
+                        <Button Content="{Binding ConnectButtonText}" Command="{Binding ConnectCommand}" Width="80" Margin="5"/>
+                        <TextBlock Text="{Binding ConnectionStatus}" Foreground="{Binding ConnectionStatusColor}" VerticalAlignment="Center" FontWeight="Bold" Margin="5,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <!-- Program Group -->
+                <GroupBox Header="Program" Margin="5,2" BorderBrush="#E0E0E0">
+                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                        <Button Content="Program" Command="{Binding ProgramCommand}" Width="80" Margin="5"/>
+                        <Button Content="Read from MCU" Command="{Binding ReadFromMcuCommand}" Width="100" Margin="5"/>
+                        <ProgressBar Value="{Binding ProgressValue}" Width="150" Height="15" Margin="5" Foreground="#00C853" Background="#E0E0E0" BorderThickness="0"/>
+                    </StackPanel>
+                </GroupBox>
+            </StackPanel>
+
+            <!-- Right Side: File Operations -->
+            <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5">
+                <Button Content="Load File" Command="{Binding LoadFileCommand}" Padding="10,5" Margin="5" Background="White" BorderBrush="#E0E0E0"/>
+                <Button Content="Save File" Command="{Binding SaveFileCommand}" Padding="10,5" Margin="5" Background="White" BorderBrush="#E0E0E0"/>
+                <Button Content="Generate SOI" Command="{Binding GenerateSoiCommand}" Padding="10,5" Margin="5" Background="White" BorderBrush="#E0E0E0"/>
+                <Button Content="Generate HEX File" Command="{Binding GenerateHexCommand}" Padding="10,5" Margin="5" Background="White" BorderBrush="#E0E0E0"/>
+            </StackPanel>
+        </Grid>
 
         <!-- 左側面板：節點列表 (TabControl) -->
         <Grid Grid.Row="1" Grid.Column="0" Background="#FAFAFA">

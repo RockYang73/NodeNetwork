@@ -53,6 +53,53 @@ namespace ActuatorApp.ViewModels
         /// </summary>
         private readonly NodeGrouper _grouper;
 
+        #region Connection & Program Properties
+
+        public ObservableCollection<string> ComPorts { get; }
+
+        private string _selectedComPort;
+        public string SelectedComPort
+        {
+            get => _selectedComPort;
+            set => this.RaiseAndSetIfChanged(ref _selectedComPort, value);
+        }
+
+        private bool _isConnected;
+        public bool IsConnected
+        {
+            get => _isConnected;
+            set
+            {
+                this.RaiseAndSetIfChanged(ref _isConnected, value);
+                this.RaisePropertyChanged(nameof(ConnectionStatus));
+                this.RaisePropertyChanged(nameof(ConnectButtonText));
+                this.RaisePropertyChanged(nameof(ConnectionStatusColor));
+            }
+        }
+
+        public string ConnectionStatus => IsConnected ? "Connected" : "Disconnected";
+        public string ConnectButtonText => IsConnected ? "Disconnect" : "Connect";
+        public string ConnectionStatusColor => IsConnected ? "#4CAF50" : "#F44336"; // Green / Red
+
+        private double _progressValue;
+        public double ProgressValue
+        {
+            get => _progressValue;
+            set => this.RaiseAndSetIfChanged(ref _progressValue, value);
+        }
+
+        #endregion
+
+        #region Commands
+        public ReactiveCommand<Unit, Unit> ConnectCommand { get; }
+        public ReactiveCommand<Unit, Unit> ProgramCommand { get; }
+        public ReactiveCommand<Unit, Unit> ReadFromMcuCommand { get; }
+        public ReactiveCommand<Unit, Unit> LoadFileCommand { get; }
+        public ReactiveCommand<Unit, Unit> SaveFileCommand { get; }
+        public ReactiveCommand<Unit, Unit> GenerateSoiCommand { get; }
+        public ReactiveCommand<Unit, Unit> GenerateHexCommand { get; }
+        #endregion
+
         /// <summary>
         /// 節點網路
         /// </summary>
@@ -115,6 +162,39 @@ namespace ActuatorApp.ViewModels
 
             // 設定預設選中 "Power Supply" 分類 (索引 4)
             SelectedTabIndex = 4;
+
+            // Connection & Program Init
+            ComPorts = new ObservableCollection<string> { "COM1", "COM2", "COM3", "COM4" };
+            SelectedComPort = ComPorts.FirstOrDefault();
+
+            ConnectCommand = ReactiveCommand.Create(() =>
+            {
+                IsConnected = !IsConnected;
+                Debug.WriteLine($"Connection Toggled: {IsConnected}");
+            });
+
+            ProgramCommand = ReactiveCommand.CreateFromTask(async () =>
+            {
+                Debug.WriteLine("Programming...");
+                ProgressValue = 0;
+                for(int i=0; i<=100; i+=10)
+                {
+                    ProgressValue = i;
+                    await System.Threading.Tasks.Task.Delay(50);
+                }
+                Debug.WriteLine("Programmed!");
+            });
+
+            ReadFromMcuCommand = ReactiveCommand.Create(() =>
+            {
+                Debug.WriteLine("Reading from MCU...");
+            });
+
+            LoadFileCommand = ReactiveCommand.Create(() => Debug.WriteLine("Load File"));
+            SaveFileCommand = ReactiveCommand.Create(() => Debug.WriteLine("Save File"));
+            GenerateSoiCommand = ReactiveCommand.Create(() => Debug.WriteLine("Generate SOI"));
+            GenerateHexCommand = ReactiveCommand.Create(() => Debug.WriteLine("Generate HEX"));
+
 
             // 初始化 NodeGrouper
             _grouper = new NodeGrouper

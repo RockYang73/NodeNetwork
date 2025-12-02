@@ -1,4 +1,4 @@
-﻿# ActuatorApp 規格文件
+# ActuatorApp 規格文件
 
 ## 文件資訊
 | 項目 | 內容 |
@@ -6,7 +6,7 @@
 | **專案名稱** | ActuatorApp (電動推桿控制系統節點編輯器) |
 | **基於框架** | NodeNetwork (WPF + ReactiveUI) |
 | **建立日期** | 2025年11月27日 |
-| **版本** | 2.0 (已重構解耦架構) |
+| **版本** | 3.0 (整合 Infrastructure 層與進階功能) |
 
 ---
 
@@ -24,7 +24,15 @@
                               配件 (TYC)
 ```
 
-### 1.3 軟體架構 (解耦設計)
+### 1.3 核心架構風格
+
+| 架構模式 | 說明 |
+|----------|------|
+| **MVVM** | 嚴格遵循 Model-View-ViewModel 模式，UI 邏輯與業務邏輯分離 |
+| **Reactive Programming** | 深度整合 ReactiveUI 與 DynamicData，所有狀態變更透過 Observable Streams 管理 |
+| **Clean Architecture** | 三層分離架構 (Core → Infrastructure → UI)，依賴方向由外向內 |
+
+### 1.4 軟體架構 (解耦設計)
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
@@ -265,16 +273,265 @@ public enum ProtocolType
 
 ---
 
-## 6. 視覺設計
+## 6. NodeNetwork 核心框架機制
 
-### 6.1 端口外觀
+### 6.1 核心 ViewModel 職責
+
+| 類別 | 職責 |
+|------|------|
+| **NetworkViewModel** | 管理整個節點網絡，包含所有節點與連線的集合 |
+| **NodeViewModel** | 表示單一節點，包含輸入/輸出端點集合 |
+| **NodeInputViewModel** / **NodeOutputViewModel** | 表示節點的輸入/輸出端點 |
+| **ConnectionViewModel** | 表示兩端點間的連線 |
+| **PendingConnectionViewModel** | 使用者正在拖曳建立的暫存連線 |
+
+### 6.2 Reactive 數據流機制
+
+NodeNetwork 採用 **Push-based 響應式架構**，所有狀態變更自動傳播：
+
+```csharp
+// 範例：當 Input 連線變更時，自動計算新值
+this.WhenAnyValue(vm => vm.Input.Values)      // 觀察連線集合
+    .SelectMany(values => values              // 攤平每個連線的值
+        .Select(v => v.Value)                 // 取得實際資料
+        .CombineLatest())                     // 合併最新值
+    .Subscribe(data => ProcessData(data));   // 處理資料
+```
+
+### 6.3 連線驗證流程
+
+```
+用戶拖曳連線
+     │
+     ▼
+┌─────────────────────────────────────┐
+│ PendingConnectionViewModel.Validation │
+│   (IObservable<ValidationResult>)    │
+└─────────────────┬───────────────────┘
+                  │
+                  ▼
+┌─────────────────────────────────────┐
+│   每當目標端點變化時觸發驗證         │
+│   - 檢查 PortType 是否相符           │
+│   - 呼叫 ConnectionRuleEngine        │
+│   - 回傳 ValidationResult            │
+└─────────────────┬───────────────────┘
+                  │
+          ┌───────┴───────┐
+          ▼               ▼
+     ┌────────┐      ┌────────┐
+     │ IsValid │      │ Invalid │
+     │  =true  │      │ =false  │
+     └────┬───┘      └────┬───┘
+          │               │
+          ▼               ▼
+     允許連線         阻止連線
+                    (顯示錯誤訊息)
+```
+
+---
+
+## 7. 進階功能模組
+
+### 7.1 Infrastructure 層 (資料存取)
+
+```
+📁 ActuatorApp.Infrastructure/
+├── ActuatorApp.Infrastructure.csproj
+└── 📁 Repositories/
+    └── ProductRepository.cs
+```
+
+**IProductRepository 介面** (定義於 Core 層):
+```csharp
+public interface IProductRepository
+{
+    Task<IEnumerable<ProductDefinition>> GetAllProductsAsync();
+    Task<ProductDefinition> GetProductByModelAsync(string modelNumber);
+    Task<IEnumerable<ProductDefinition>> GetProductsByCategoryAsync(NodeType category);
+    
+    // 舊系統資料表存取方法
+    Task<IEnumerable<Tcsync>> GetTcsyncsAsync();
+    Task<IEnumerable<Control>> GetControlsAsync();
+    Task<IEnumerable<Controlbox>> GetControlboxesAsync();
+    Task<IEnumerable<Actuator>> GetActuatorsAsync();
+}
+```
+
+**ProductRepository 實作** (Infrastructure 層):
+- 使用 **Dapper** 作為微型 ORM
+- 連接 **SQLite** 本地資料庫
+- 提供非同步資料存取方法
+
+### 7.2 資源移植與部署
+
+#### 7.2.1 產品圖片
+```
+來源: DG_Programmer_Git/PGEProgrammer/Products/
+目標: ActuatorApp/Assets/Products/
+```
+
+#### 7.2.2 SQLite 資料庫
+```
+來源: DG_Programmer_Git/PGEProgrammer/Category/PGE1/Database.db
+目標: ActuatorApp/Assets/Database.db
+```
+
+#### 7.2.3 部署配置 (csproj)
+```xml
+<ItemGroup>
+  <None Update="Assets\Database.db">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+  <None Update="Assets\Products\**\*">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
+```
+
+### 7.3 資料庫實體 (Entities)
+
+定義於 `ActuatorApp.Core/Entities/ProductEntities.cs`:
+
+| 實體類別 | 對應資料表 | 用途 |
+|----------|------------|------|
+| Touch | Touch | 觸控螢幕資料 |
+| Tcsync | Tcsync | 同步控制盒資料 |
+| TCS | TCS | TCS 系列資料 |
+| Controlbox | Controlboxes | 控制盒資料 |
+| Control | Controls | 手控器資料 |
+| Columns | Columns | 升降柱資料 |
+| Actuator | Actuators | 推桿資料 |
+| Actlevel | Actlevel | 推桿等級資料 |
+| PowerSupply | PowerSupplies | 電源供應器資料 |
+| Battery | Batteries | 電池資料 |
+| Accessory | Accessories | 配件資料 |
+
+### 7.4 Repository 模式實作
+
+```csharp
+// ActuatorApp.Infrastructure/Repositories/ProductRepository.cs
+public class ProductRepository : IProductRepository
+{
+    private readonly string _connectionString;
+    
+    public ProductRepository(string dbPath)
+    {
+        _connectionString = $"Data Source={dbPath}";
+    }
+    
+    public async Task<IEnumerable<Control>> GetControlsAsync()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        return await connection.QueryAsync<Control>("SELECT * FROM Controls");
+    }
+    
+    public async Task<IEnumerable<Controlbox>> GetControlboxesAsync()
+    {
+        using var connection = new SqliteConnection(_connectionString);
+        return await connection.QueryAsync<Controlbox>("SELECT * FROM Controlboxes");
+    }
+    
+    // ... 其他方法
+}
+```
+
+### 7.5 數據流整合
+
+新的資料管理層使得 `ActuatorApp` 能夠：
+- 讀取舊系統中定義的詳細產品參數
+- 載入產品圖像路徑
+- 整合到 `ProductCatalog` 或各個 `NodeViewModel` 中
+- 提供更精細的連線驗證規則
+
+### 7.6 自動連線服務 (AutoConnectService)
+
+定義於 `ActuatorApp/Services/`:
+
+```csharp
+public interface IAutoConnectService
+{
+    void TryAutoConnect(NodeViewModel newNode, NetworkViewModel network);
+}
+```
+
+**連接邏輯流程:**
+1. **掃描輸入**: 遍歷新節點的所有輸入端口 (Input Ports)
+2. **尋找匹配**: 對於每個未連接的輸入端口，遍歷網路上現有所有節點的輸出端口
+3. **相容性驗證**:
+   - 確保輸入與輸出的 `PortType` 相同
+   - 呼叫 `ConnectionRules.ValidateConnection` 進行業務邏輯檢查
+4. **建立連線**: 找到第一個符合條件的輸出端口後，自動建立連線
+
+**整合方式:**
+- **依賴注入**: `AutoConnectService` 在 `App.xaml.cs` 中被實例化，並注入到 `MainViewModel`
+- **觸發時機**: 在 `MainViewModel.AddNode` 方法中，節點添加後立即呼叫
+
+### 7.7 群組節點機制 (Group Node)
+
+定義於 `ActuatorApp/ViewModels/Nodes/GroupNodeViewModel.cs`:
+
+**用途:** 將多個節點打包成單一群組節點，簡化複雜配置的視覺呈現。
+
+**核心元件:**
+- `GroupNodeViewModel` - 群組節點的 ViewModel
+- `NodeGrouper` - 執行分組邏輯的服務類別 (位於 `NodeNetworkToolkit/Group/`)
+- `IOBinding (ActuatorGroupIOBinding)` - 自定義 I/O 綁定邏輯
+
+**端口映射規則:**
+| 情境 | Group Node 端口 | 端口位置 | 命名 |
+|------|----------------|----------|------|
+| 外部 Output → 群組內部 Input | Input 端口 | 左側 | "In" |
+| 群組內部 Output → 外部 Input | Output 端口 | 右側 | "Out" |
+
+**特性:**
+- **類型保留**: 代理端口會保留原始連線端口的 `PortType`
+- **自動清理**: 當連接到代理端口的連線被移除時，代理端口自動消失
+
+**交互操作:**
+- **群組化**: 選取多個節點 → 右鍵選單 →「群組選取節點」
+- **解散群組**: 選取 Group Node → 右鍵選單 →「解散群組」
+- **進入群組**: 選取 Group Node → 右鍵選單 →「進入群組」(或雙擊)
+
+## 8. 節點圖片顯示
+
+### 8.1 功能描述
+在節點標題下方、端口列表上方顯示產品圖片，以提供直觀的視覺識別。
+
+### 8.2 實作方式
+使用 `NodeView.LeadingControlPresenterStyle` 將圖片注入到節點的標準佈局中，避免使用 `Grid` 疊加導致遮擋端口名稱。
+
+```xaml
+<views:NodeView.LeadingControlPresenterStyle>
+    <Style TargetType="ContentPresenter">
+        <Setter Property="Content">
+            <Setter.Value>
+                <Border>
+                    <Image Source="{Binding ProductImageSource, ElementName=Root}" ... />
+                </Border>
+            </Setter.Value>
+        </Setter>
+    </Style>
+</views:NodeView.LeadingControlPresenterStyle>
+```
+
+### 8.3 資料綁定
+- **ViewModel**: `ActuatorNodeViewModel` 包含 `ProductImage` 屬性 (ImageSource)。
+- **View Code-behind**: 將 ViewModel 的 `ProductImage` 綁定到 View 的 Dependency Property `ProductImageSource`。
+- **XAML**: `Image` 控制項綁定到 `ProductImageSource`，並使用 `NullToVisibilityConverter` 在無圖片時隱藏區域。
+
+---
+
+## 9. 視覺設計
+
+### 9.1 端口外觀
 | PortType | 形狀 | 顏色 | 邊框 |
 |----------|------|------|------|
 | Power | 圓形 | #2196F3 (藍色) | #1565C0 |
 | BinaryData | 方形 | #607D8B (灰色) | #455A64 |
 | Parameter | 菱形 (45°旋轉方形) | #FFC107 (黃色) | #FF8F00 |
 
-### 6.2 節點背景顏色
+### 9.2 節點背景顏色
 | NodeType | 顏色 | 色碼 |
 |----------|------|------|
 | PowerSupply | 綠色 | #4CAF50 |
@@ -285,14 +542,14 @@ public enum ProtocolType
 | Accessory | 灰色 | #607D8B |
 | Parameter | 黃色 | #FFC107 |
 
-### 6.3 節點結構
+### 9.3 節點結構
 - 標題列：節點名稱 (型號)
 - 內容區：產品圖片 (預留)
 - 端口：左側 Input，右側 Output
 
 ---
 
-## 7. 設計決策記錄
+## 10. 設計決策記錄
 
 | 項目 | 決策 | 說明 |
 |------|------|------|
@@ -304,11 +561,11 @@ public enum ProtocolType
 
 ---
 
-## 8. 專案檔案結構
+## 11. 專案檔案結構
 
 ```
 📁 NodeNetwork/
-├── 📁 ActuatorApp.Core/           ★ 核心層 (無 UI 依賴)
+├── 📁 ActuatorApp.Core/           ★ 核心層 (無 UI 依賴, netstandard2.0)
 │   ├── ActuatorApp.Core.csproj
 │   ├── 📁 Enums/
 │   │   ├── NodeType.cs
@@ -318,21 +575,32 @@ public enum ProtocolType
 │   │   ├── IActuatorNode.cs
 │   │   ├── IActuatorPort.cs
 │   │   ├── IConnectionValidator.cs
-│   │   └── INodeFactory.cs
+│   │   ├── INodeFactory.cs
+│   │   └── IProductRepository.cs      ★ 新增：資料存取介面
 │   ├── 📁 Products/
 │   │   ├── CategoryDefinition.cs
 │   │   ├── PortDefinition.cs
 │   │   ├── ProductCatalog.cs
 │   │   └── ProductDefinition.cs
+│   ├── 📁 Entities/                    ★ 新增：資料庫實體
+│   │   └── ProductEntities.cs
 │   └── 📁 Validation/
 │       └── ConnectionRuleEngine.cs
 │
-├── 📁 ActuatorApp/                 ★ UI 層 (NodeNetwork 實作)
+├── 📁 ActuatorApp.Infrastructure/      ★ 新增：基礎設施層
+│   ├── ActuatorApp.Infrastructure.csproj
+│   └── 📁 Repositories/
+│       └── ProductRepository.cs
+│
+├── 📁 ActuatorApp/                 ★ UI 層 (NodeNetwork 實作, netcoreapp3.1)
 │   ├── App.xaml
 │   ├── App.xaml.cs
 │   ├── ActuatorApp.csproj
 │   ├── 📁 Adapters/                ★ 適配器層
 │   │   └── NodeNetworkNodeFactory.cs
+│   ├── 📁 Services/                ★ 新增：應用服務
+│   │   ├── IAutoConnectService.cs
+│   │   └── AutoConnectService.cs
 │   ├── 📁 Properties/
 │   │   └── AssemblyInfo.cs
 │   ├── 📁 Models/
@@ -353,7 +621,8 @@ public enum ProtocolType
 │   │   │   ├── THNodeViewModel.cs
 │   │   │   ├── TYCNodeViewModel.cs
 │   │   │   ├── THPNodeViewModel.cs
-│   │   │   └── ParameterNodeViewModel.cs
+│   │   │   ├── ParameterNodeViewModel.cs
+│   │   │   └── GroupNodeViewModel.cs   ★ 新增：群組節點
 │   │   └── 📁 Editors/
 │   │       └── ParameterValueEditorViewModel.cs
 │   ├── 📁 Views/
@@ -367,6 +636,8 @@ public enum ProtocolType
 │   │   ├── THNodeView.xaml.cs
 │   │   ├── MainWindow.xaml
 │   │   ├── MainWindow.xaml.cs
+│   │   ├── 📁 Converters/              ★ 新增：值轉換器
+│   │   │   └── (XAML 轉換器)
 │   │   └── 📁 Editors/
 │   │       ├── ParameterValueEditorView.xaml
 │   │       └── ParameterValueEditorView.xaml.cs
@@ -378,12 +649,19 @@ public enum ProtocolType
 
 ---
 
-## 9. 相依套件
+## 12. 相依套件
 
 ### ActuatorApp.Core (netstandard2.0)
 ```xml
 <!-- 無外部相依，僅使用 .NET Standard 內建函式庫 -->
 <PackageReference Include="System.Text.Json" Version="6.0.0" />
+```
+
+### ActuatorApp.Infrastructure (netstandard2.0)
+```xml
+<PackageReference Include="Microsoft.Data.Sqlite" Version="7.0.0" />
+<PackageReference Include="Dapper" Version="2.0.123" />
+<ProjectReference Include="..\ActuatorApp.Core\ActuatorApp.Core.csproj" />
 ```
 
 ### ActuatorApp (netcoreapp3.1)
@@ -392,32 +670,33 @@ public enum ProtocolType
 <PackageReference Include="ReactiveUI" Version="13.2.18" />
 <PackageReference Include="ReactiveUI.WPF" Version="13.2.18" />
 <ProjectReference Include="..\ActuatorApp.Core\ActuatorApp.Core.csproj" />
+<ProjectReference Include="..\ActuatorApp.Infrastructure\ActuatorApp.Infrastructure.csproj" />
 <ProjectReference Include="..\NodeNetwork\NodeNetwork.csproj" />
 <ProjectReference Include="..\NodeNetworkToolkit\NodeNetworkToolkit.csproj" />
 ```
 
 ---
 
-## 10. 遷移指南 (從 NodeNetwork 到其他框架)
+## 13. 遷移指南 (從 NodeNetwork 到其他框架)
 
 如需遷移至其他節點編輯器框架（如付費套件），請依照以下步驟：
 
-### 10.1 Core 層 (無需修改)
+### 12.1 Core 層 (無需修改)
 `ActuatorApp.Core` 專案完全不依賴 NodeNetwork，可直接引用。
 
-### 10.2 需重新實作的部分
+### 12.2 需重新實作的部分
 1. **建立新的 NodeFactory** - 實作 `INodeFactory` 介面
 2. **建立新的 Node ViewModels** - 實作 `IActuatorNode` 介面
 3. **建立新的 Port ViewModels** - 實作 `IActuatorPort` 介面
 4. **建立新的 ConnectionValidator** - 使用 `ConnectionRuleEngine` 的純邏輯
 
-### 10.3 可重用的部分
+### 12.3 可重用的部分
 - `ProductCatalog` - 所有產品定義
 - `ConnectionRuleEngine` - 連線驗證邏輯
 - `Enums` - NodeType, PortType, ProtocolType
 - JSON 產品配置檔案
 
-### 10.4 範例：遷移至假設的 "SuperNodeEditor" 框架
+### 12.4 範例：遷移至假設的 "SuperNodeEditor" 框架
 ```csharp
 // 新的 NodeFactory
 public class SuperNodeEditorFactory : INodeFactory
@@ -437,32 +716,32 @@ public class SuperNodeEditorFactory : INodeFactory
 
 ---
 
-## 11. 使用說明
+## 14. 使用說明
 
-### 11.1 啟動專案
+### 13.1 啟動專案
 1. 開啟 Visual Studio
 2. 載入 `NodeNetwork.sln` 方案
 3. 將 `ActuatorApp` 設為啟動專案
 4. 按 F5 執行
 
-### 11.2 新增節點
+### 13.2 新增節點
 1. 從左側 TabControl 選擇產品分類
 2. 點擊節點項目將其加入畫布
 3. 拖曳節點調整位置
 
-### 11.3 建立連線
+### 13.3 建立連線
 1. 從輸出端口拖曳至輸入端口
 2. 系統會自動驗證連線是否有效
 3. 無效連線會顯示錯誤訊息
 
-### 11.4 參數設定
+### 13.4 參數設定
 1. 點擊「新增參數節點」按鈕
 2. 在黃色橢圓節點中輸入參數值
 3. 將參數節點連接到 TA 的 Code 或 Stroke 端口
 
 ---
 
-## 12. 後續擴充項目
+## 15. 後續擴充項目
 
 - [ ] 產品圖片載入機制
 - [ ] 後臺配置 API 整合
@@ -479,7 +758,7 @@ public class SuperNodeEditorFactory : INodeFactory
 
 ---
 
-## 13. 參考資料
+## 16. 參考資料
 
 - [NodeNetwork GitHub](https://github.com/Wouterdek/NodeNetwork)
 - [NodeNetwork 文件](https://wouterdek.github.io/NodeNetwork/doc)

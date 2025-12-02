@@ -1,8 +1,180 @@
 ﻿<Application x:Class="ActuatorApp.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:ActuatorApp">
+             xmlns:local="clr-namespace:ActuatorApp"
+             xmlns:views="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
+             xmlns:viewModels="clr-namespace:NodeNetwork.ViewModels;assembly=NodeNetwork"
+             xmlns:controls="clr-namespace:NodeNetwork.Views.Controls;assembly=NodeNetwork"
+             xmlns:reactiveUi="http://reactiveui.net">
     <Application.Resources>
-         
+        <!-- 自訂 NodeView 樣式：讓 Input 和 Output 端口靠上對齊 -->
+        <Style TargetType="{x:Type views:NodeView}">
+            <Setter Property="Background" Value="#5D9CEC"/>
+            <Setter Property="Foreground" Value="#FFFFFF"/>
+            <Setter Property="TitleFontFamily" Value="Segoe UI Semibold"/>
+            <Setter Property="TitleFontSize" Value="18"/>
+            <Setter Property="BorderBrush" Value="Orange"/>
+            <Setter Property="CornerRadius" Value="4"/>
+            <Setter Property="ArrowSize" Value="20"/>
+            <Setter Property="EndpointsStackingOrientation" Value="Vertical"/>
+            <Setter Property="IsTabStop" Value="False"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="views:NodeView">
+                        <controls:FillPanel x:Name="Container">
+                            <VisualStateManager.VisualStateGroups>
+                                <VisualStateGroup Name="{x:Static views:NodeView.SelectedVisualStatesGroup}">
+                                    <VisualState Name="{x:Static views:NodeView.SelectedState}">
+                                        <Storyboard>
+                                            <ThicknessAnimation Duration="0" To="-3" 
+                                                                Storyboard.TargetName="Container" Storyboard.TargetProperty="Margin"/>
+                                            <ThicknessAnimation Duration="0" To="3" Storyboard.TargetName="Border" Storyboard.TargetProperty="BorderThickness"/>
+                                        </Storyboard>
+                                    </VisualState>
+                                    <VisualState Name="{x:Static views:NodeView.UnselectedState}">
+                                        <Storyboard>
+                                            <ThicknessAnimation Duration="0" To="0" Storyboard.TargetName="Container" Storyboard.TargetProperty="Margin"/>
+                                            <ThicknessAnimation Duration="0" To="0" Storyboard.TargetName="Border" Storyboard.TargetProperty="BorderThickness"/>
+                                        </Storyboard>
+                                    </VisualState>
+                                </VisualStateGroup>
+                            </VisualStateManager.VisualStateGroups>
+
+                            <Border x:Name="Border" Margin="10,0,10,0" CornerRadius="{TemplateBinding CornerRadius}"
+                                    MinWidth="100" Background="{TemplateBinding Background}" BorderBrush="{TemplateBinding BorderBrush}">
+                                <Grid>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="*"/>
+                                        <RowDefinition Height="Auto"/>
+                                        <RowDefinition Height="Auto"/>
+                                    </Grid.RowDefinitions>
+                                    
+                                    <!-- 標題區域 -->
+                                    <StackPanel Grid.Row="0">
+                                        <Canvas x:Name="HeaderTopMargin" Width="auto" Height="10"/>
+                                        <DockPanel>
+                                            <Image x:Name="HeaderIcon" MaxWidth="{TemplateBinding ArrowSize}" MaxHeight="{TemplateBinding ArrowSize}" DockPanel.Dock="Left" HorizontalAlignment="Left" VerticalAlignment="Center" Margin="10,0,0,0"/>
+                                            <TextBlock x:Name="NameLabel" TextWrapping="Wrap" Background="Transparent" Foreground="{TemplateBinding Foreground}" DockPanel.Dock="Left" HorizontalAlignment="Left" VerticalAlignment="Center" TextAlignment="Center"
+                                                       FontFamily="{TemplateBinding TitleFontFamily}" FontSize="{TemplateBinding TitleFontSize}" Margin="10,0,0,0"/>
+                                            <controls:ArrowToggleButton x:Name="CollapseButton" Width="{TemplateBinding ArrowSize}" Height="{TemplateBinding ArrowSize}" DockPanel.Dock="Right" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="20,0,10,0" IsChecked="{Binding IsCollapsed}"/>
+                                        </DockPanel>
+                                        <Canvas x:Name="HeaderBottomMargin" Width="auto" Height="3"/>
+                                    </StackPanel>
+                                    
+                                    <!-- Leading Control -->
+                                    <ContentPresenter Grid.Row="1" x:Name="LeadingControlPresenter" Style="{TemplateBinding LeadingControlPresenterStyle}"/>
+
+                                    <!-- Input 和 Output 端口區域 - 使用 Grid 讓兩邊都靠上 -->
+                                    <Grid Grid.Row="2">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto"/>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        
+                                        <!-- Input 端口 - 靠左上 -->
+                                        <ItemsControl Grid.Column="0" x:Name="InputsList" IsTabStop="False" VerticalAlignment="Top">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="viewModels:NodeInputViewModel">
+                                                    <reactiveUi:ViewModelViewHost ViewModel="{Binding}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsTabStop="False"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        
+                                        <!-- Output 端口 - 靠右上 -->
+                                        <ItemsControl Grid.Column="2" x:Name="OutputsList" IsTabStop="False" VerticalAlignment="Top">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="viewModels:NodeOutputViewModel">
+                                                    <reactiveUi:ViewModelViewHost ViewModel="{Binding}" HorizontalContentAlignment="Stretch" VerticalContentAlignment="Stretch" IsTabStop="False"/>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                    </Grid>
+                                    
+                                    <!-- Endpoint Groups -->
+                                    <ItemsControl Grid.Row="3" x:Name="EndpointGroupsList" IsTabStop="False">
+                                        <ItemsControl.ItemTemplate>
+                                            <DataTemplate DataType="viewModels:EndpointGroupViewModel">
+                                                <reactiveUi:ViewModelViewHost ViewModel="{Binding}"
+                                                                              HorizontalContentAlignment="Stretch"
+                                                                              VerticalContentAlignment="Stretch"
+                                                                              IsTabStop="False" />
+                                            </DataTemplate>
+                                        </ItemsControl.ItemTemplate>
+                                    </ItemsControl>
+                                    
+                                    <!-- Trailing Control -->
+                                    <ContentPresenter Grid.Row="4" x:Name="TrailingControlPresenter" Style="{TemplateBinding TrailingControlPresenterStyle}"/>
+
+                                    <!-- Resize Thumbs -->
+                                    <Thumb Grid.RowSpan="5" VerticalAlignment="Bottom" Height="10" x:Name="ResizeVerticalThumb" Cursor="SizeNS">
+                                        <Thumb.Template>
+                                            <ControlTemplate>
+                                                <Canvas Background="White" Opacity="0"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Resizable}" Value="Horizontal">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Resizable}" Value="None">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+                                    <Thumb Grid.RowSpan="5" HorizontalAlignment="Right" Width="10" x:Name="ResizeHorizontalThumb" Cursor="SizeWE">
+                                        <Thumb.Template>
+                                            <ControlTemplate>
+                                                <Canvas Background="White" Opacity="0"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Resizable}" Value="Vertical">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Resizable}" Value="None">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+                                    <Thumb Grid.RowSpan="5" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="10" Height="10" x:Name="ResizeDiagonalThumb" Cursor="SizeNWSE">
+                                        <Thumb.Template>
+                                            <ControlTemplate>
+                                                <Canvas Background="White" Opacity="0"/>
+                                            </ControlTemplate>
+                                        </Thumb.Template>
+                                        <Thumb.Style>
+                                            <Style TargetType="Thumb">
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding Resizable}" Value="Vertical">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Resizable}" Value="Horizontal">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                    <DataTrigger Binding="{Binding Resizable}" Value="None">
+                                                        <Setter Property="Visibility" Value="Collapsed" />
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Thumb.Style>
+                                    </Thumb>
+                                </Grid>
+                            </Border>
+                        </controls:FillPanel>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
     </Application.Resources>
 </Application>

@@ -44,6 +44,11 @@ namespace ActuatorApp.ViewModels
         private readonly IAutoConnectService _autoConnectService;
 
         /// <summary>
+        /// 產品圖片服務
+        /// </summary>
+        private readonly IProductImageService _productImageService;
+
+        /// <summary>
         /// 節點群組化工具
         /// </summary>
         private readonly NodeGrouper _grouper;
@@ -93,14 +98,15 @@ namespace ActuatorApp.ViewModels
         /// </summary>
         public ReactiveCommand<Unit, Unit> OpenGroupCommand { get; }
 
-        public MainViewModel(IProductRepository productRepository, IAutoConnectService autoConnectService) // Modified constructor
+        public MainViewModel(IProductRepository productRepository, IAutoConnectService autoConnectService, IProductImageService productImageService) // Modified constructor
         {
             _productRepository = productRepository; // Store injected repository
             _autoConnectService = autoConnectService; // Store injected service
+            _productImageService = productImageService; // Store injected image service
 
             // 從 Core 層載入產品目錄
             _catalog = ProductCatalog.CreateDefault();
-            _nodeFactory = new NodeNetworkNodeFactory(_catalog);
+            _nodeFactory = new NodeNetworkNodeFactory(_catalog, _productImageService);
 
             Network = new NetworkViewModel();
 

@@ -59,6 +59,11 @@ namespace ActuatorApp.Core.Products
         public string BackgroundColor { get; set; }
 
         /// <summary>
+        /// 產品圖片相對路徑 (如 "Controlbox/TC14.png")
+        /// </summary>
+        public string ImagePath { get; set; }
+
+        /// <summary>
         /// 取得顯示名稱 (如果 DisplayName 為空則使用 ModelNumber)
         /// </summary>
         public string GetDisplayName() => string.IsNullOrEmpty(DisplayName) ? ModelNumber : DisplayName;

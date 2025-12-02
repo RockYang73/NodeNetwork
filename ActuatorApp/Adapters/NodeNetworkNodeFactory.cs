@@ -1,8 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Windows.Media.Imaging;
 using ActuatorApp.Core.Interfaces;
 using ActuatorApp.Core.Products;
 using ActuatorApp.Core.Enums;
+using ActuatorApp.ViewModels;
 using ActuatorApp.ViewModels.Nodes;
 using NodeNetwork.ViewModels;
 
@@ -15,11 +17,17 @@ namespace ActuatorApp.Adapters
     public class NodeNetworkNodeFactory : INodeFactory
     {
         private readonly ProductCatalog _catalog;
+        private readonly IProductImageService _imageService;
         private readonly Dictionary<string, Func<ProductDefinition, NodeViewModel>> _nodeCreators;
 
-        public NodeNetworkNodeFactory(ProductCatalog catalog)
+        public NodeNetworkNodeFactory(ProductCatalog catalog) : this(catalog, null)
+        {
+        }
+
+        public NodeNetworkNodeFactory(ProductCatalog catalog, IProductImageService imageService)
         {
             _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+            _imageService = imageService;
             _nodeCreators = InitializeNodeCreators();
         }
 
@@ -122,13 +130,56 @@ namespace ActuatorApp.Adapters
             if (_nodeCreators.TryGetValue(definition.ModelNumber, out var creator))
             {
                 var node = creator(definition);
-                if (node is IActuatorNode actuatorNode)
+                if (node is ActuatorNodeViewModel actuatorNode)
                 {
+                    // 設定產品圖片
+                    SetProductImage(actuatorNode, definition.ModelNumber);
                     return actuatorNode;
                 }
             }
 
             throw new NotSupportedException($"不支援的產品型號: {definition.ModelNumber}");
+        }
+
+        /// <summary>
+        /// 設定節點的產品圖片
+        /// </summary>
+        private void SetProductImage(ActuatorNodeViewModel node, string modelNumber)
+        {
+            if (_imageService == null)
+            {
+                System.Diagnostics.Debug.WriteLine($"[ProductImage] ImageService is null for {modelNumber}");
+                return;
+            }
+
+            var imagePath = _imageService.GetImagePath(modelNumber);
+            System.Diagnostics.Debug.WriteLine($"[ProductImage] Model: {modelNumber}, Path: {imagePath ?? "null"}");
+            
+            if (!string.IsNullOrEmpty(imagePath))
+            {
+                try
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ProductImage] Loading image from: {imagePath}");
+                    var bitmap = new BitmapImage();
+                    bitmap.BeginInit();
+                    bitmap.UriSource = new Uri(imagePath, UriKind.Absolute);
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.EndInit();
+                    bitmap.Freeze(); // 允許跨執行緒存取
+                    node.ProductImage = bitmap;
+                    System.Diagnostics.Debug.WriteLine($"[ProductImage] Successfully loaded image for {modelNumber}, Width={bitmap.PixelWidth}, Height={bitmap.PixelHeight}");
+                    System.Diagnostics.Debug.WriteLine($"[ProductImage] node.ProductImage is null? {node.ProductImage == null}");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[ProductImage] Failed to load image for {modelNumber}: {ex.Message}");
+                    System.Diagnostics.Debug.WriteLine($"[ProductImage] Exception: {ex}");
+                }
+            }
+            else
+            {
+                System.Diagnostics.Debug.WriteLine($"[ProductImage] No image path found for {modelNumber}");
+            }
         }
 
         /// <summary>
@@ -154,7 +205,15 @@ namespace ActuatorApp.Adapters
 
             if (_nodeCreators.TryGetValue(modelNumber, out var creator))
             {
-                return creator(definition);
+                var node = creator(definition);
+                
+                // 設定產品圖片
+                if (node is ActuatorNodeViewModel actuatorNode)
+                {
+                    SetProductImage(actuatorNode, modelNumber);
+                }
+                
+                return node;
             }
 
             throw new NotSupportedException($"不支援的產品型號: {modelNumber}");

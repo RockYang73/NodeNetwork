@@ -1,5 +1,4 @@
-﻿using System;
-using System.Reactive.Disposables;
+﻿using System.Reactive.Disposables;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -27,6 +26,18 @@ namespace ActuatorApp.Views
             get => ViewModel;
             set => ViewModel = (ActuatorNodeViewModel)value;
         }
+        
+        // 為 XAML 綁定提供 ProductImage 屬性
+        public static readonly DependencyProperty ProductImageSourceProperty =
+            DependencyProperty.Register(nameof(ProductImageSource),
+                typeof(ImageSource), typeof(ActuatorNodeView),
+                new PropertyMetadata(null));
+
+        public ImageSource ProductImageSource
+        {
+            get => (ImageSource)GetValue(ProductImageSourceProperty);
+            set => SetValue(ProductImageSourceProperty, value);
+        }
         #endregion
 
         public ActuatorNodeView()
@@ -35,11 +46,17 @@ namespace ActuatorApp.Views
 
             this.WhenActivated(d =>
             {
+                System.Diagnostics.Debug.WriteLine($"[ActuatorNodeView] WhenActivated - ViewModel: {ViewModel?.Name}, ProductImage is null? {ViewModel?.ProductImage == null}");
+                
                 NodeView.ViewModel = this.ViewModel;
                 Disposable.Create(() => NodeView.ViewModel = null).DisposeWith(d);
 
                 this.OneWayBind(ViewModel, vm => vm.NodeType, v => v.NodeView.Background,
                     ConvertNodeTypeToBrush).DisposeWith(d);
+
+                // 同時更新 DependencyProperty 供 XAML Visibility 綁定使用
+                this.OneWayBind(ViewModel, vm => vm.ProductImage, v => v.ProductImageSource)
+                    .DisposeWith(d);
             });
         }
 

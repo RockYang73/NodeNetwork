@@ -6,6 +6,33 @@
              xmlns:views="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
              xmlns:local="clr-namespace:ActuatorApp.Views"
              mc:Ignorable="d" 
+             x:Name="Root"
              d:DesignHeight="300" d:DesignWidth="300">
-    <views:NodeView x:Name="NodeView"/>
+    <UserControl.Resources>
+        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+    </UserControl.Resources>
+    
+    <Grid>
+        <views:NodeView x:Name="NodeView">
+            <!-- 將圖片放在標題下方，端口列表上方 -->
+            <views:NodeView.LeadingControlPresenterStyle>
+                <Style TargetType="ContentPresenter">
+                    <Setter Property="Content">
+                        <Setter.Value>
+                            <Border HorizontalAlignment="Center"
+                                    Margin="0,5,0,5"
+                                    Visibility="{Binding ProductImageSource, Converter={StaticResource NullToVisibilityConverter}, ElementName=Root}">
+                                <Image x:Name="ProductImage"
+                                       Source="{Binding ProductImageSource, ElementName=Root}" 
+                                       MaxWidth="100" 
+                                       MaxHeight="80"
+                                       Stretch="Uniform"
+                                       RenderOptions.BitmapScalingMode="HighQuality"/>
+                            </Border>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </views:NodeView.LeadingControlPresenterStyle>
+        </views:NodeView>
+    </Grid>
 </UserControl>

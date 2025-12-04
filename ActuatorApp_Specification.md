@@ -93,6 +93,8 @@
 
 ## 2. 產品分類 (NodeGroup)
 
+> **注意**: 本節描述系統標準分類結構。實際的產品型號清單、詳細分類歸屬（如 TBB 系列歸屬於 Battery）以及產品圖片路徑，目前由 **`Assets/products.json`** 進行動態定義與擴充。
+
 ### 2.1 Tab 結構
 | Tab 名稱 | 節點系列 | 說明 |
 |----------|----------|------|
@@ -362,6 +364,42 @@ public interface IProductRepository
 - 使用 **Dapper** 作為微型 ORM
 - 連接 **SQLite** 本地資料庫
 - 提供非同步資料存取方法
+
+### 7.1.1 暫存產品資料來源 (products.json)
+
+在系統開發初期與過渡階段，為了快速驗證產品清單與圖片顯示，系統採用混合式資料來源：
+1. **硬編碼預設值**: `ProductCatalog.CreateDefault()` 提供基礎核心產品定義。
+2. **JSON 配置檔**: `Assets/products.json` 作為擴充資料來源，用於定義大量的產品型號、分類歸屬與圖片路徑。
+   - **格式**:
+     ```json
+     {
+       "products": [
+         { "modelNumber": "TBB2", "nodeType": "Battery", "category": "Battery", "imagePath": "Battery/TBB2.png" }
+       ]
+     }
+     ```
+   - **載入機制**: 應用程式啟動時，`MainViewModel` 呼叫 `ProductCatalog.MergeFromJson()` 動態合併 JSON 資料。
+
+### 7.1.2 資料來源抽換策略
+
+為確保系統能平滑遷移至正式資料庫 (SQLite) 或遠端 API，架構設計保留了彈性：
+
+1. **現狀 (Phase 1)**:
+   - 資料流: `products.json` → `ProductCatalog`
+   - 優點：快速迭代，無需維護資料庫工具，適合原型開發。
+
+2. **目標 (Phase 2 - SQLite/Database)**:
+   - 資料流: `SQLite DB` → `IProductRepository` → `ProductCatalog`
+   - **抽換步驟**:
+     1. 完善 `ActuatorApp.Infrastructure` 中的 `ProductRepository` 實作。
+     2. 將 `products.json` 的內容遷移至 SQLite `Products` 資料表。
+     3. 修改 `MainViewModel` 初始化邏輯，移除 `MergeFromJson`，改為呼叫 `repository.GetAllProductsAsync()` 並填入 `ProductCatalog`。
+
+3. **未來 (Phase 3 - Web API)**:
+   - 資料流: `Cloud API` → `IProductRepository (HttpImpl)` → `ProductCatalog`
+   - **抽換步驟**:
+     1. 實作 `ProductHttpRepository` (繼承 `IProductRepository`)。
+     2. 在 `App.xaml.cs` 的依賴注入容器中，將 `IProductRepository` 的註冊由 `SqliteProductRepository` 替換為 `ProductHttpRepository`。
 
 ### 7.2 資源移植與部署
 

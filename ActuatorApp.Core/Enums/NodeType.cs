@@ -36,6 +36,16 @@
         Accessory,
 
         /// <summary>
+        /// 觸控 (Touch)
+        /// </summary>
+        Touch,
+
+        /// <summary>
+        /// TCS
+        /// </summary>
+        TCS,
+
+        /// <summary>
         /// 參數節點
         /// </summary>
         Parameter

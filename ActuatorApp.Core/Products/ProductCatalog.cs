@@ -54,6 +54,88 @@ namespace ActuatorApp.Core.Products
         }
 
         /// <summary>
+        /// 從 JSON 檔案合併產品資料 (用於載入 products.json 中的額外型號)
+        /// </summary>
+        public void MergeFromJson(string jsonPath)
+        {
+            if (!File.Exists(jsonPath)) return;
+
+            try
+            {
+                var json = File.ReadAllText(jsonPath);
+                var options = new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                };
+                
+                var data = JsonSerializer.Deserialize<ProductJsonData>(json, options);
+
+                if (data?.Products != null)
+                {
+                    foreach (var item in data.Products)
+                    {
+                        // 嘗試解析 NodeType
+                        if (!System.Enum.TryParse<NodeType>(item.NodeType, true, out var nodeType))
+                        {
+                            continue; // 跳過不支援的類型
+                        }
+
+                        var existing = _products.FirstOrDefault(p => p.ModelNumber == item.ModelNumber);
+                        if (existing != null)
+                        {
+                            // 更新現有產品圖片
+                            if (string.IsNullOrEmpty(existing.ImagePath) && !string.IsNullOrEmpty(item.ImagePath))
+                            {
+                                existing.ImagePath = item.ImagePath;
+                            }
+                        }
+                        else
+                        {
+                            // 建立新產品
+                            ProductDefinition newProduct = null;
+                            switch (nodeType)
+                            {
+                                case NodeType.ControlBox:
+                                    newProduct = CreateControlBox(item.ModelNumber, 2); // 預設 2 馬達
+                                    break;
+                                case NodeType.Battery:
+                                    newProduct = CreateBattery(item.ModelNumber);
+                                    break;
+                                case NodeType.Actuator:
+                                    newProduct = CreateActuator(item.ModelNumber);
+                                    break;
+                                case NodeType.Control:
+                                    newProduct = CreateControl(item.ModelNumber, item.SubCategory);
+                                    break;
+                                case NodeType.Accessory:
+                                    newProduct = CreateAccessory(item.ModelNumber);
+                                    break;
+                                case NodeType.Touch:
+                                case NodeType.TCS:
+                                    newProduct = CreateTouch(item.ModelNumber, nodeType);
+                                    break;
+                            }
+
+                            if (newProduct != null)
+                            {
+                                newProduct.ImagePath = item.ImagePath;
+                                _products.Add(newProduct);
+                            }
+                        }
+                    }
+
+                    // 重建分類
+                    _categories.Clear();
+                    InitializeDefaultCategories();
+                }
+            }
+            catch (System.Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Error merging products from JSON: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 從 JSON 檔案載入產品目錄
         /// </summary>
         public static ProductCatalog LoadFromJson(string jsonPath)
@@ -100,6 +182,20 @@ namespace ActuatorApp.Core.Products
             catalog.InitializeDefaultCategories();
             
             return catalog;
+        }
+        
+        private class ProductJsonData
+        {
+            public List<ProductJsonEntry> Products { get; set; }
+        }
+
+        private class ProductJsonEntry
+        {
+            public string ModelNumber { get; set; }
+            public string NodeType { get; set; }
+            public string Category { get; set; }
+            public string SubCategory { get; set; }
+            public string ImagePath { get; set; }
         }
 
         /// <summary>
@@ -236,6 +332,14 @@ namespace ActuatorApp.Core.Products
                 Order = 6,
                 Description = "電池",
                 Products = _products.Where(p => p.Category == "Battery").ToList()
+            });
+
+            _categories.Add(new CategoryDefinition
+            {
+                Name = "T-touch",
+                Order = 7,
+                Description = "觸控系列",
+                Products = _products.Where(p => p.Category == "T-touch").ToList()
             });
         }
 
@@ -374,6 +478,21 @@ namespace ActuatorApp.Core.Products
                     new PortDefinition { Name = "IN1", PortType = PortType.BinaryData, Description = "信號輸入 1" },
                     new PortDefinition { Name = "IN2", PortType = PortType.BinaryData, Description = "信號輸入 2" }
                 },
+                Outputs = new List<PortDefinition>
+                {
+                    new PortDefinition { Name = "Out", PortType = PortType.BinaryData, Description = "信號輸出" }
+                }
+            };
+        }
+
+        private static ProductDefinition CreateTouch(string model, NodeType type)
+        {
+            return new ProductDefinition
+            {
+                ModelNumber = model,
+                NodeType = type,
+                Category = "T-touch",
+                BackgroundColor = "#E91E63",
                 Outputs = new List<PortDefinition>
                 {
                     new PortDefinition { Name = "Out", PortType = PortType.BinaryData, Description = "信號輸出" }

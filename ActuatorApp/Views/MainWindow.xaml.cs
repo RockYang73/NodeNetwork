@@ -40,14 +40,6 @@ namespace ActuatorApp.Views
                 this.OneWayBind(ViewModel, vm => vm.Network, v => v.NetworkView.ViewModel)
                     .DisposeWith(d);
 
-                // 綁定自動佈局按鈕
-                this.BindCommand(ViewModel, vm => vm.AutoLayout, v => v.AutoLayoutButton)
-                    .DisposeWith(d);
-
-                // 綁定群組節點按鈕
-                this.BindCommand(ViewModel, vm => vm.GroupNodesCommand, v => v.GroupNodesButton)
-                    .DisposeWith(d);
-
                 // 綁定節點列表
                 BindNodeLists();
 

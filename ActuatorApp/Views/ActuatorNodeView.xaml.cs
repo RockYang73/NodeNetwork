@@ -26,7 +26,7 @@ namespace ActuatorApp.Views
             get => ViewModel;
             set => ViewModel = (ActuatorNodeViewModel)value;
         }
-        
+
         // 為 XAML 綁定提供 ProductImage 屬性
         public static readonly DependencyProperty ProductImageSourceProperty =
             DependencyProperty.Register(nameof(ProductImageSource),
@@ -47,7 +47,7 @@ namespace ActuatorApp.Views
             this.WhenActivated(d =>
             {
                 System.Diagnostics.Debug.WriteLine($"[ActuatorNodeView] WhenActivated - ViewModel: {ViewModel?.Name}, ProductImage is null? {ViewModel?.ProductImage == null}");
-                
+
                 NodeView.ViewModel = this.ViewModel;
                 Disposable.Create(() => NodeView.ViewModel = null).DisposeWith(d);
 

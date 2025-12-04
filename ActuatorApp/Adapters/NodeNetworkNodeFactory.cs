@@ -127,18 +127,56 @@ namespace ActuatorApp.Adapters
             if (definition == null)
                 throw new ArgumentNullException(nameof(definition));
 
+            // 1. 優先使用特定型號的建立器
             if (_nodeCreators.TryGetValue(definition.ModelNumber, out var creator))
             {
                 var node = creator(definition);
                 if (node is ActuatorNodeViewModel actuatorNode)
                 {
-                    // 設定產品圖片
+                    SetProductImage(actuatorNode, definition.ModelNumber);
+                    return actuatorNode;
+                }
+            }
+
+            // 2. 使用通用類型建立器
+            var genericCreator = GetCreatorForType(definition);
+            if (genericCreator != null)
+            {
+                var node = genericCreator(definition);
+                if (node is ActuatorNodeViewModel actuatorNode)
+                {
                     SetProductImage(actuatorNode, definition.ModelNumber);
                     return actuatorNode;
                 }
             }
 
             throw new NotSupportedException($"不支援的產品型號: {definition.ModelNumber}");
+        }
+
+        private Func<ProductDefinition, NodeViewModel> GetCreatorForType(ProductDefinition product)
+        {
+            switch (product.NodeType)
+            {
+                case ActuatorApp.Core.Enums.NodeType.PowerSupply:
+                    return p => new TPNodeViewModel(p.ModelNumber);
+                case ActuatorApp.Core.Enums.NodeType.Battery:
+                    return p => new TBBNodeViewModel(p.ModelNumber);
+                case ActuatorApp.Core.Enums.NodeType.ControlBox:
+                    return p => new TCNodeViewModel(p.ModelNumber, GetMotorCount(p));
+                case ActuatorApp.Core.Enums.NodeType.Actuator:
+                    return p => new TANodeViewModel(p.ModelNumber);
+                case ActuatorApp.Core.Enums.NodeType.Control:
+                    if (product.SubCategory == "Handheld")
+                        return p => new THPNodeViewModel(p.ModelNumber);
+                    return p => new THNodeViewModel(p.ModelNumber);
+                case ActuatorApp.Core.Enums.NodeType.Accessory:
+                    return p => new TYCNodeViewModel(p.ModelNumber);
+                case ActuatorApp.Core.Enums.NodeType.Touch:
+                case ActuatorApp.Core.Enums.NodeType.TCS:
+                    return p => new THNodeViewModel(p.ModelNumber);
+                default:
+                    return null;
+            }
         }
 
         /// <summary>
@@ -203,16 +241,20 @@ namespace ActuatorApp.Adapters
             if (definition == null)
                 throw new ArgumentException($"找不到產品定義: {modelNumber}", nameof(modelNumber));
 
+            // 1. 優先使用特定型號的建立器
             if (_nodeCreators.TryGetValue(modelNumber, out var creator))
             {
                 var node = creator(definition);
-                
-                // 設定產品圖片
-                if (node is ActuatorNodeViewModel actuatorNode)
-                {
-                    SetProductImage(actuatorNode, modelNumber);
-                }
-                
+                if (node is ActuatorNodeViewModel actuatorNode) SetProductImage(actuatorNode, modelNumber);
+                return node;
+            }
+
+            // 2. 使用通用類型建立器
+            var genericCreator = GetCreatorForType(definition);
+            if (genericCreator != null)
+            {
+                var node = genericCreator(definition);
+                if (node is ActuatorNodeViewModel actuatorNode) SetProductImage(actuatorNode, modelNumber);
                 return node;
             }
 
@@ -224,7 +266,11 @@ namespace ActuatorApp.Adapters
         /// </summary>
         public IEnumerable<string> GetAvailableModels()
         {
-            return _nodeCreators.Keys;
+            // 只返回硬編碼的列表可能不夠，應該要返回 Catalog 中的所有產品
+            // 但既有介面可能依賴於此，暫時保留。
+            // 若要支援所有動態產品，這裡應該改為:
+            // return _catalog.Products.Select(p => p.ModelNumber);
+            return _nodeCreators.Keys; 
         }
 
         /// <summary>
@@ -232,7 +278,15 @@ namespace ActuatorApp.Adapters
         /// </summary>
         public bool IsModelSupported(string modelNumber)
         {
-            return _nodeCreators.ContainsKey(modelNumber);
+            if (_nodeCreators.ContainsKey(modelNumber)) return true;
+            
+            var product = _catalog.GetProduct(modelNumber);
+            if (product != null)
+            {
+                return GetCreatorForType(product) != null;
+            }
+            
+            return false;
         }
     }
 }

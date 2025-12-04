@@ -153,6 +153,11 @@ namespace ActuatorApp.ViewModels
 
             // 從 Core 層載入產品目錄
             _catalog = ProductCatalog.CreateDefault();
+            
+            // 從 JSON 合併額外產品定義
+            string jsonPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Assets", "products.json");
+            _catalog.MergeFromJson(jsonPath);
+
             _nodeFactory = new NodeNetworkNodeFactory(_catalog, _productImageService);
 
             Network = new NetworkViewModel();
@@ -190,68 +195,129 @@ namespace ActuatorApp.ViewModels
                 Debug.WriteLine("Reading from MCU...");
             });
 
-            LoadFileCommand = ReactiveCommand.Create(() => Debug.WriteLine("Load File"));
-            SaveFileCommand = ReactiveCommand.Create(() => Debug.WriteLine("Save File"));
-            GenerateSoiCommand = ReactiveCommand.Create(() => Debug.WriteLine("Generate SOI"));
-            GenerateHexCommand = ReactiveCommand.Create(() => Debug.WriteLine("Generate HEX"));
+                        LoadFileCommand = ReactiveCommand.Create(() => Debug.WriteLine("Load File"));
 
+                        SaveFileCommand = ReactiveCommand.Create(() => Debug.WriteLine("Save File"));
 
-            // 初始化 NodeGrouper
-            _grouper = new NodeGrouper
-            {
-                GroupNodeFactory = (subnet) => new GroupNodeViewModel(subnet),
-                SubNetworkFactory = () => new NetworkViewModel(),
-                EntranceNodeFactory = () => new NodeViewModel { Name = "Group Input" },
-                ExitNodeFactory = () => new NodeViewModel { Name = "Group Output" },
-                IOBindingFactory = (groupNode, entranceNode, exitNode) =>
-                    new ActuatorGroupIOBinding(groupNode, entranceNode, exitNode)
-            };
+                        GenerateSoiCommand = ReactiveCommand.Create(() => Debug.WriteLine("Generate SOI"));
 
-            // 群組節點命令
-            var canGroup = this.WhenAnyObservable(vm => vm.Network.SelectedNodes.CountChanged).Select(c => c > 1);
-            GroupNodesCommand = ReactiveCommand.Create(() =>
-            {
-                var selectedNodes = Network.SelectedNodes.Items.ToList();
-                if (selectedNodes.Any())
-                {
-                    var binding = _grouper.MergeIntoGroup(Network, selectedNodes);
-                    if (binding.GroupNode is GroupNodeViewModel groupVm)
-                    {
-                        groupVm.IOBinding = binding;
-                    }
-                }
-            }, canGroup);
+                        GenerateHexCommand = ReactiveCommand.Create(() => Debug.WriteLine("Generate HEX"));
 
-            // 判斷是否選中了一個群組節點
-            var isGroupNodeSelected = this.WhenAnyValue(vm => vm.Network)
-                .Select(net => net.SelectedNodes.Connect())
-                .Switch()
-                .Select(_ => Network.SelectedNodes.Count == 1 && Network.SelectedNodes.Items.First() is GroupNodeViewModel);
-
-            // 解散群組命令
-            UngroupNodesCommand = ReactiveCommand.Create(() =>
-            {
-                var selectedGroupNode = (GroupNodeViewModel)Network.SelectedNodes.Items.First();
-                if (selectedGroupNode.IOBinding != null)
-                {
-                    _grouper.Ungroup(selectedGroupNode.IOBinding);
-                }
-            }, isGroupNodeSelected);
-
-            // 進入群組命令
-            OpenGroupCommand = ReactiveCommand.Create(() =>
-            {
-                var selectedGroupNode = (GroupNodeViewModel)Network.SelectedNodes.Items.First();
-                // TODO: Implement navigation logic (NetworkStack)
-                System.Diagnostics.Debug.WriteLine($"Opening group: {selectedGroupNode.Name}");
-            }, isGroupNodeSelected);
-
-            // 自動佈局
-            var layouter = new ForceDirectedLayouter();
-            AutoLayout = ReactiveCommand.Create(() =>
-                layouter.Layout(new Configuration { Network = Network }, 10000));
             
-            // 初始化載入產品資料命令
+
+            
+
+                        // 初始化 NodeGrouper
+
+                        _grouper = new NodeGrouper
+
+                        {
+
+                            GroupNodeFactory = (subnet) => new GroupNodeViewModel(subnet),
+
+                            SubNetworkFactory = () => new NetworkViewModel(),
+
+                            EntranceNodeFactory = () => new NodeViewModel { Name = "Group Input" },
+
+                            ExitNodeFactory = () => new NodeViewModel { Name = "Group Output" },
+
+                            IOBindingFactory = (groupNode, entranceNode, exitNode) =>
+
+                                new ActuatorGroupIOBinding(groupNode, entranceNode, exitNode)
+
+                        };
+
+            
+
+                        // 群組節點命令
+
+                        var canGroup = this.WhenAnyObservable(vm => vm.Network.SelectedNodes.CountChanged).Select(c => c > 1);
+
+                        GroupNodesCommand = ReactiveCommand.Create(() =>
+
+                        {
+
+                            var selectedNodes = Network.SelectedNodes.Items.ToList();
+
+                            if (selectedNodes.Any())
+
+                            {
+
+                                var binding = _grouper.MergeIntoGroup(Network, selectedNodes);
+
+                                if (binding.GroupNode is GroupNodeViewModel groupVm)
+
+                                {
+
+                                    groupVm.IOBinding = binding;
+
+                                }
+
+                            }
+
+                        }, canGroup);
+
+            
+
+                        // 判斷是否選中了一個群組節點
+
+                        var isGroupNodeSelected = this.WhenAnyValue(vm => vm.Network)
+
+                            .Select(net => net.SelectedNodes.Connect())
+
+                            .Switch()
+
+                            .Select(_ => Network.SelectedNodes.Count == 1 && Network.SelectedNodes.Items.First() is GroupNodeViewModel);
+
+            
+
+                        // 解散群組命令
+
+                        UngroupNodesCommand = ReactiveCommand.Create(() =>
+
+                        {
+
+                            var selectedGroupNode = (GroupNodeViewModel)Network.SelectedNodes.Items.First();
+
+                            if (selectedGroupNode.IOBinding != null)
+
+                            {
+
+                                _grouper.Ungroup(selectedGroupNode.IOBinding);
+
+                            }
+
+                        }, isGroupNodeSelected);
+
+            
+
+                        // 進入群組命令
+
+                        OpenGroupCommand = ReactiveCommand.Create(() =>
+
+                        {
+
+                            var selectedGroupNode = (GroupNodeViewModel)Network.SelectedNodes.Items.First();
+
+                            // TODO: Implement navigation logic (NetworkStack)
+
+                            System.Diagnostics.Debug.WriteLine($"Opening group: {selectedGroupNode.Name}");
+
+                        }, isGroupNodeSelected);
+
+            
+
+                        // 自動佈局
+
+                        var layouter = new ForceDirectedLayouter();
+
+                        AutoLayout = ReactiveCommand.Create(() =>
+
+                            layouter.Layout(new Configuration { Network = Network }, 10000));
+
+                        
+
+                        // 初始化載入產品資料命令
             LoadProductDataCommand = ReactiveCommand.CreateFromTask(async () =>
             {
                 Debug.WriteLine("Loading Control data from repository...");
@@ -298,8 +364,10 @@ namespace ActuatorApp.ViewModels
                         {
                             if (_nodeFactory.IsModelSupported(product.ModelNumber))
                             {
+                                var imagePath = _productImageService.GetImagePath(product.ModelNumber);
                                 subCategory.Nodes.Add(new NodeItemViewModel(
                                     product.DisplayName ?? product.ModelNumber,
+                                    imagePath,
                                     () => _nodeFactory.CreateNodeViewModel(product.ModelNumber)
                                 ));
                             }
@@ -320,8 +388,10 @@ namespace ActuatorApp.ViewModels
                     {
                         if (_nodeFactory.IsModelSupported(product.ModelNumber))
                         {
+                            var imagePath = _productImageService.GetImagePath(product.ModelNumber);
                             category.Nodes.Add(new NodeItemViewModel(
                                 product.DisplayName ?? product.ModelNumber,
+                                imagePath,
                                 () => _nodeFactory.CreateNodeViewModel(product.ModelNumber)
                             ));
                         }
@@ -399,11 +469,13 @@ namespace ActuatorApp.ViewModels
     public class NodeItemViewModel
     {
         public string Name { get; set; }
+        public string ImagePath { get; set; }
         public Func<NodeViewModel> Factory { get; set; }
 
-        public NodeItemViewModel(string name, Func<NodeViewModel> factory)
+        public NodeItemViewModel(string name, string imagePath, Func<NodeViewModel> factory)
         {
             Name = name;
+            ImagePath = imagePath;
             Factory = factory;
         }
     }

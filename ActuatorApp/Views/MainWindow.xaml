@@ -1,4 +1,4 @@
-﻿<Window x:Class="ActuatorApp.Views.MainWindow"
+<Window x:Class="ActuatorApp.Views.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
@@ -9,72 +9,55 @@
         xmlns:nodes="clr-namespace:ActuatorApp.ViewModels.Nodes"
         xmlns:converters="clr-namespace:ActuatorApp.Views.Converters"
         mc:Ignorable="d"
-        Title="ActuatorApp - 電動推桿控制系統節點編輯器" 
-        Height="700" Width="1200"
+        Title="ActuatorApp - 電動推桿控制系統節點編輯器"
+        Height="800" Width="1400"
         WindowStartupLocation="CenterScreen">
-    
+
     <Window.Resources>
-        <!-- 節點項目模板 -->
+        <!-- 節點項目模板 (Updated for Horizontal Layout with Image) -->
         <DataTemplate x:Key="NodeItemTemplate" DataType="{x:Type vm:NodeItemViewModel}">
-            <Border Background="#F5F5F5" 
-                    BorderBrush="#E0E0E0" 
-                    BorderThickness="1" 
-                    CornerRadius="4"
-                    Margin="2"
-                    Padding="8,5"
-                    Cursor="Hand">
-                <TextBlock Text="{Binding Name}" 
-                           FontSize="12"
-                           HorizontalAlignment="Center"/>
+            <Border Background="Transparent" Margin="8,5" Cursor="Hand" ToolTip="{Binding Name}">
+                <StackPanel HorizontalAlignment="Center" VerticalAlignment="Bottom">
+                    <!-- Image (Height set to 70 to be visible) -->
+                    <Image Source="{Binding ImagePath}" Height="70" RenderOptions.BitmapScalingMode="HighQuality" Margin="0,0,0,5" HorizontalAlignment="Center"/>
+                    <TextBlock Text="{Binding Name}"
+                               FontSize="11"
+                               FontWeight="SemiBold"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               TextWrapping="Wrap"
+                               MaxWidth="80"/>
+                </StackPanel>
             </Border>
-        </DataTemplate>
-        
-        <converters:TypeVisibilityCheck x:Key="TypeCheckToVisibility"/>
-        
-        <ContextMenu x:Key="nodeMenu" x:Shared="True">
-            <!-- Group nodes -->
-            <!-- We can bind to Window.DataContext because the ContextMenu is not in the visual tree the same way -->
-            <!-- But ElementName binding is tricky. Usually Proxy is needed or RelativeSource FindAncestor Window -->
-            <!-- However, NodeView's DataContext is NodeViewModel. We need MainViewModel. -->
-            <!-- Actually, commands like GroupNodesCommand are in MainViewModel. -->
-            <!-- BUT, when right clicking a node, the DataContext of the menu item is the NodeViewModel (via PlacementTarget). -->
-            <!-- So we need to reach out to MainViewModel. -->
-            <!-- Binding to Application.Current.MainWindow.DataContext is a common workaround if x:Name fails. -->
-            
-            <!-- Group Selected Nodes (Global command, operates on selection) -->
-            <!-- Note: This command is in MainViewModel. -->
-            <MenuItem Header="群組選取節點" 
+                </DataTemplate>
+
+                <converters:TypeVisibilityCheck x:Key="TypeCheckToVisibility"/>
+
+                <ContextMenu x:Key="nodeMenu" x:Shared="True">
+            <MenuItem Header="群組選取節點"
                       Command="{Binding DataContext.GroupNodesCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-            
-            <!-- Ungroup (Only for GroupNodeViewModel) -->
-            <MenuItem Header="解散群組" 
+            <MenuItem Header="解散群組"
                       Command="{Binding DataContext.UngroupNodesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                       Visibility="{Binding Converter={StaticResource TypeCheckToVisibility}, ConverterParameter={x:Type nodes:GroupNodeViewModel}}"/>
-            
-            <!-- Open Group (Only for GroupNodeViewModel) -->
-            <MenuItem Header="進入群組" 
+            <MenuItem Header="進入群組"
                       Command="{Binding DataContext.OpenGroupCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                       Visibility="{Binding Converter={StaticResource TypeCheckToVisibility}, ConverterParameter={x:Type nodes:GroupNodeViewModel}}"/>
         </ContextMenu>
     </Window.Resources>
-    
+
     <Grid>
         <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/> <!-- Toolbar -->
+            <RowDefinition Height="Auto"/> <!-- Product Tabs (New) -->
+            <RowDefinition Height="*"/>    <!-- Network Canvas -->
         </Grid.RowDefinitions>
-        <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="280"/>
-            <ColumnDefinition Width="5"/>
-            <ColumnDefinition Width="*"/>
-        </Grid.ColumnDefinitions>
 
         <!-- Top Toolbar -->
-        <Grid Grid.Row="0" Grid.ColumnSpan="3" Background="White" Margin="0,0,0,5">
+        <Grid Grid.Row="0" Background="White" Margin="0,0,0,0">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/> <!-- Connection & Program -->
                 <ColumnDefinition Width="*"/>    <!-- Spacer -->
-                <ColumnDefinition Width="Auto"/> <!-- File Buttons -->
+                <ColumnDefinition Width="Auto"/> <!-- File Buttons & Tools -->
             </Grid.ColumnDefinitions>
 
             <!-- Left Side: Connection & Program -->
@@ -99,178 +82,196 @@
                 </GroupBox>
             </StackPanel>
 
-            <!-- Right Side: File Operations -->
+            <!-- Right Side: File Operations & Tools -->
             <StackPanel Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center" Margin="5">
-                <Button Content="Load File" Command="{Binding LoadFileCommand}" Padding="10,5" Margin="5" Background="White" BorderBrush="#E0E0E0"/>
-                <Button Content="Save File" Command="{Binding SaveFileCommand}" Padding="10,5" Margin="5" Background="White" BorderBrush="#E0E0E0"/>
-                <Button Content="Generate SOI" Command="{Binding GenerateSoiCommand}" Padding="10,5" Margin="5" Background="White" BorderBrush="#E0E0E0"/>
-                <Button Content="Generate HEX File" Command="{Binding GenerateHexCommand}" Padding="10,5" Margin="5" Background="White" BorderBrush="#E0E0E0"/>
+                <!-- Tools moved from sidebar -->
+                <Button x:Name="AddParameterButton" Content="Add Parameter" Padding="8,4" Margin="2" Background="#FAFAFA"/>
+
+                <Separator Style="{StaticResource {x:Static ToolBar.SeparatorStyleKey}}" Margin="5,0"/>
+
+                <!-- File Ops -->
+                <Button Content="Load File" Command="{Binding LoadFileCommand}" Padding="10,5" Margin="2" Background="White" BorderBrush="#E0E0E0"/>
+                <Button Content="Save File" Command="{Binding SaveFileCommand}" Padding="10,5" Margin="2" Background="White" BorderBrush="#E0E0E0"/>
+                <Button Content="Generate SOI" Command="{Binding GenerateSoiCommand}" Padding="10,5" Margin="2" Background="White" BorderBrush="#E0E0E0"/>
+                <Button Content="Generate HEX File" Command="{Binding GenerateHexCommand}" Padding="10,5" Margin="2" Background="White" BorderBrush="#E0E0E0"/>
             </StackPanel>
         </Grid>
 
-        <!-- 左側面板：節點列表 (TabControl) -->
-        <Grid Grid.Row="1" Grid.Column="0" Background="#FAFAFA">
-            <Grid.RowDefinitions>
-                <RowDefinition Height="*"/>
-                <RowDefinition Height="Auto"/>
-            </Grid.RowDefinitions>
-            
-            <!-- TabControl：產品分類 -->
-            <TabControl x:Name="NodeCategoryTabs" 
-                        Grid.Row="0"
-                        Margin="5"
-                        SelectedIndex="{Binding SelectedTabIndex}">
-                <!-- Control Box -->
-                <TabItem Header="Control Box">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="ControlBoxNodes"
-                                      ItemTemplate="{StaticResource NodeItemTemplate}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </TabItem>
-                
-                <!-- Actuator -->
-                <TabItem Header="Actuator">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="ActuatorNodes"
-                                      ItemTemplate="{StaticResource NodeItemTemplate}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </TabItem>
-                
-                <!-- Controls -->
-                <TabItem Header="Controls">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <!-- Embedded -->
-                            <Expander Header="Embedded" IsExpanded="True" Margin="0,0,0,5">
-                                <ItemsControl x:Name="EmbeddedNodes"
-                                              ItemTemplate="{StaticResource NodeItemTemplate}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
-                            </Expander>
-                            
-                            <!-- Wire Handset -->
-                            <Expander Header="Wire Handset" IsExpanded="True" Margin="0,0,0,5">
-                                <ItemsControl x:Name="WireHandsetNodes"
-                                              ItemTemplate="{StaticResource NodeItemTemplate}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
-                            </Expander>
-                            
-                            <!-- Wireless Handset -->
-                            <Expander Header="Wireless Handset" IsExpanded="True" Margin="0,0,0,5">
-                                <ItemsControl x:Name="WirelessHandsetNodes"
-                                              ItemTemplate="{StaticResource NodeItemTemplate}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
-                            </Expander>
-                            
-                            <!-- Handheld -->
-                            <Expander Header="Handheld" IsExpanded="True">
-                                <ItemsControl x:Name="HandheldNodes"
-                                              ItemTemplate="{StaticResource NodeItemTemplate}">
-                                    <ItemsControl.ItemsPanel>
-                                        <ItemsPanelTemplate>
-                                            <WrapPanel/>
-                                        </ItemsPanelTemplate>
-                                    </ItemsControl.ItemsPanel>
-                                </ItemsControl>
-                            </Expander>
-                        </StackPanel>
-                    </ScrollViewer>
-                </TabItem>
-                
-                <!-- Accessories -->
-                <TabItem Header="Accessories">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="AccessoryNodes"
-                                      ItemTemplate="{StaticResource NodeItemTemplate}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </TabItem>
-                
-                <!-- Power Supply -->
-                <TabItem Header="Power Supply">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="PowerSupplyNodes"
-                                      ItemTemplate="{StaticResource NodeItemTemplate}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </TabItem>
-                
-                <!-- Battery -->
-                <TabItem Header="Battery">
-                    <ScrollViewer VerticalScrollBarVisibility="Auto">
-                        <ItemsControl x:Name="BatteryNodes"
-                                      ItemTemplate="{StaticResource NodeItemTemplate}">
-                            <ItemsControl.ItemsPanel>
-                                <ItemsPanelTemplate>
-                                    <WrapPanel/>
-                                </ItemsPanelTemplate>
-                            </ItemsControl.ItemsPanel>
-                        </ItemsControl>
-                    </ScrollViewer>
-                </TabItem>
-            </TabControl>
-            
-            <!-- 底部按鈕 -->
-            <StackPanel Grid.Row="1" Margin="10">
-                <Button x:Name="AddParameterButton" 
-                        Content="新增參數節點" 
-                        Padding="10,5"
-                        Margin="0,0,0,5"/>
-                <Button x:Name="GroupNodesButton" 
-                        Content="群組選取節點" 
-                        Padding="10,5"
-                        Margin="0,0,0,5"/>
-                <Button x:Name="AutoLayoutButton" 
-                        Content="自動佈局" 
-                        Padding="10,5"/>
-            </StackPanel>
-        </Grid>
+        <!-- Horizontal Product Tabs -->
+        <TabControl x:Name="NodeCategoryTabs"
+                    Grid.Row="1"
+                    Margin="0"
+                    Padding="0"
+                    BorderThickness="0,1,0,1"
+                    BorderBrush="#E0E0E0"
+                    Background="White"
+                    SelectedIndex="{Binding SelectedTabIndex}">
+            <TabControl.ItemContainerStyle>
+                <Style TargetType="TabItem">
+                    <Setter Property="Padding" Value="20,10"/>
+                    <Setter Property="FontSize" Value="13"/>
+                    <Setter Property="Background" Value="#F5F5F5"/>
+                    <Setter Property="BorderThickness" Value="0,0,1,0"/>
+                    <Setter Property="BorderBrush" Value="#E0E0E0"/>
+                </Style>
+            </TabControl.ItemContainerStyle>
 
-        <!-- 分隔線 -->
-        <GridSplitter Grid.Row="1" Grid.Column="1" 
-                      VerticalAlignment="Stretch" 
-                      HorizontalAlignment="Stretch"
-                      Background="#E0E0E0"/>
+            <!-- Control Box -->
+            <TabItem Header="Control box">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="10">
+                    <ItemsControl x:Name="ControlBoxNodes" ItemTemplate="{StaticResource NodeItemTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
 
-        <!-- 右側：節點編輯器畫布 -->
-        <views:NetworkView x:Name="NetworkView" 
-                           Grid.Row="1" Grid.Column="2"
+            <!-- Actuator -->
+            <TabItem Header="Actuator">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="10">
+                    <ItemsControl x:Name="ActuatorNodes" ItemTemplate="{StaticResource NodeItemTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Controls (Grouped) -->
+            <TabItem Header="Controls">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="0">
+                    <StackPanel Orientation="Horizontal">
+                        <!-- Embedded -->
+                        <Border BorderBrush="#E0E0E0" BorderThickness="0,0,1,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <ItemsControl x:Name="EmbeddedNodes" ItemTemplate="{StaticResource NodeItemTemplate}" Grid.Row="0" Margin="5,5,5,20">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <Border Grid.Row="1" Background="#546E7A" Padding="5,2">
+                                    <TextBlock Text="Embedded" Foreground="White" FontSize="11" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Wire Handset -->
+                        <Border BorderBrush="#E0E0E0" BorderThickness="0,0,1,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <ItemsControl x:Name="WireHandsetNodes" ItemTemplate="{StaticResource NodeItemTemplate}" Grid.Row="0" Margin="5,5,5,20">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <Border Grid.Row="1" Background="#546E7A" Padding="5,2">
+                                    <TextBlock Text="Wire Handset" Foreground="White" FontSize="11" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Wireless Handset -->
+                        <Border BorderBrush="#E0E0E0" BorderThickness="0,0,1,0">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <ItemsControl x:Name="WirelessHandsetNodes" ItemTemplate="{StaticResource NodeItemTemplate}" Grid.Row="0" Margin="5,5,5,20">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <Border Grid.Row="1" Background="#546E7A" Padding="5,2">
+                                    <TextBlock Text="Wireless Handset" Foreground="White" FontSize="11" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+
+                        <!-- Handheld -->
+                         <Border>
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="*"/>
+                                    <RowDefinition Height="Auto"/>
+                                </Grid.RowDefinitions>
+                                <ItemsControl x:Name="HandheldNodes" ItemTemplate="{StaticResource NodeItemTemplate}" Grid.Row="0" Margin="5,5,5,20">
+                                    <ItemsControl.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <StackPanel Orientation="Horizontal"/>
+                                        </ItemsPanelTemplate>
+                                    </ItemsControl.ItemsPanel>
+                                </ItemsControl>
+                                <Border Grid.Row="1" Background="#546E7A" Padding="5,2">
+                                    <TextBlock Text="Handheld" Foreground="White" FontSize="11" HorizontalAlignment="Center" FontWeight="Bold"/>
+                                </Border>
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Accessories -->
+            <TabItem Header="Accessories">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="10">
+                    <ItemsControl x:Name="AccessoryNodes" ItemTemplate="{StaticResource NodeItemTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Power Supply -->
+            <TabItem Header="Power supply">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="10">
+                    <ItemsControl x:Name="PowerSupplyNodes" ItemTemplate="{StaticResource NodeItemTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+
+            <!-- Battery -->
+            <TabItem Header="Battery">
+                <ScrollViewer HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Disabled" Padding="10">
+                    <ItemsControl x:Name="BatteryNodes" ItemTemplate="{StaticResource NodeItemTemplate}">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <StackPanel Orientation="Horizontal"/>
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                    </ItemsControl>
+                </ScrollViewer>
+            </TabItem>
+        </TabControl>
+
+        <!-- Network Canvas -->
+        <views:NetworkView x:Name="NetworkView"
+                           Grid.Row="2"
                            Background="#ECEFF1">
             <views:NetworkView.Resources>
                 <Style TargetType="views:NodeView">
@@ -278,8 +279,8 @@
                 </Style>
             </views:NetworkView.Resources>
             <views:NetworkView.NetworkBackground>
-                <DrawingBrush TileMode="Tile" 
-                              Viewport="0,0,50,50" 
+                <DrawingBrush TileMode="Tile"
+                              Viewport="0,0,50,50"
                               ViewportUnits="Absolute">
                     <DrawingBrush.Drawing>
                         <GeometryDrawing>

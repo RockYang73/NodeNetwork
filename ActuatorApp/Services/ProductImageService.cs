@@ -114,8 +114,22 @@ namespace ActuatorApp.Services
                 return inferredPath;
             }
 
-            // 回傳預設圖片
-            return _useDefaultImage ? GetDefaultImagePath() : null;
+            // 回傳預設圖片 (設定檔中的 DefaultImage)
+            if (_useDefaultImage)
+            {
+                var defaultPath = GetDefaultImagePath();
+                if (defaultPath != null) return defaultPath;
+            }
+
+            // 若都沒有，則回傳 NA.png
+            var naPath = Path.Combine(_basePath, "NA.png");
+            if (File.Exists(naPath))
+            {
+                System.Diagnostics.Debug.WriteLine($"[ProductImageService] Using NA.png for {modelNumber}");
+                return naPath;
+            }
+
+            return null;
         }
 
         /// <summary>
@@ -124,7 +138,7 @@ namespace ActuatorApp.Services
         private string TryInferImagePath(string modelNumber)
         {
             // 根據型號前綴推斷資料夾
-            var folders = new[] { "Controlbox", "Control", "Actuator", "T-touch" };
+            var folders = new[] { "Controlbox", "Control", "Actuator", "T-touch", "PowerSupply", "Accessories" };
             
             foreach (var folder in folders)
             {

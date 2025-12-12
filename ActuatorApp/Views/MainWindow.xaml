@@ -34,8 +34,19 @@
                 <converters:TypeVisibilityCheck x:Key="TypeCheckToVisibility"/>
 
                 <ContextMenu x:Key="nodeMenu" x:Shared="True">
+            <!-- 隱藏原有的 GroupNode 功能 -->
             <MenuItem Header="群組選取節點"
-                      Command="{Binding DataContext.GroupNodesCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                      Command="{Binding DataContext.GroupNodesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                      Visibility="Collapsed"/>
+            <MenuItem Header="群組選取節點 (容器樣式)"
+                      Command="{Binding DataContext.GroupNodesAsContainerCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                      ToolTip="使用新的 Header Container 樣式建立群組"
+                      Visibility="Collapsed"/>
+            <!-- FrameNode 視覺分組 -->
+            <MenuItem Header="建立 Frame (視覺分組)"
+                      Command="{Binding DataContext.CreateFrameCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                      ToolTip="建立類似 Blender 的視覺分組容器"/>
+            <Separator/>
             <MenuItem Header="解散群組"
                       Command="{Binding DataContext.UngroupNodesCommand, RelativeSource={RelativeSource AncestorType=Window}}"
                       Visibility="{Binding Converter={StaticResource TypeCheckToVisibility}, ConverterParameter={x:Type nodes:GroupNodeViewModel}}"/>
@@ -269,34 +280,58 @@
             </TabItem>
         </TabControl>
 
-        <!-- Network Canvas -->
-        <views:NetworkView x:Name="NetworkView"
-                           Grid.Row="2"
-                           Background="#ECEFF1">
-            <views:NetworkView.Resources>
-                <Style TargetType="views:NodeView">
-                    <Setter Property="ContextMenu" Value="{StaticResource nodeMenu}" />
-                </Style>
-            </views:NetworkView.Resources>
-            <views:NetworkView.NetworkBackground>
-                <DrawingBrush TileMode="Tile"
-                              Viewport="0,0,50,50"
-                              ViewportUnits="Absolute">
-                    <DrawingBrush.Drawing>
-                        <GeometryDrawing>
-                            <GeometryDrawing.Pen>
-                                <Pen Brush="#E0E0E0" Thickness="0.5"/>
-                            </GeometryDrawing.Pen>
-                            <GeometryDrawing.Geometry>
-                                <GeometryGroup>
-                                    <LineGeometry StartPoint="0,0" EndPoint="50,0"/>
-                                    <LineGeometry StartPoint="0,0" EndPoint="0,50"/>
-                                </GeometryGroup>
-                            </GeometryDrawing.Geometry>
-                        </GeometryDrawing>
-                    </DrawingBrush.Drawing>
-                </DrawingBrush>
-            </views:NetworkView.NetworkBackground>
-        </views:NetworkView>
+        <!-- Network Canvas with Frames Layer -->
+        <Grid Grid.Row="2">
+            <!-- Frames 視覺分組層 (渲染在節點下方) -->
+            <ItemsControl x:Name="FramesControl"
+                          Background="Transparent"
+                          IsHitTestVisible="True">
+                <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate>
+                        <Canvas x:Name="FramesCanvas"/>
+                    </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemContainerStyle>
+                    <Style TargetType="ContentPresenter">
+                        <Setter Property="Canvas.Left" Value="{Binding Position.X}"/>
+                        <Setter Property="Canvas.Top" Value="{Binding Position.Y}"/>
+                    </Style>
+                </ItemsControl.ItemContainerStyle>
+                <ItemsControl.ItemTemplate>
+                    <DataTemplate DataType="{x:Type nodes:FrameNodeViewModel}">
+                        <local:FrameNodeView ViewModel="{Binding}"/>
+                    </DataTemplate>
+                </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            
+            <!-- Network View (節點和連線) -->
+            <views:NetworkView x:Name="NetworkView"
+                               Background="Transparent">
+                <views:NetworkView.Resources>
+                    <Style TargetType="views:NodeView">
+                        <Setter Property="ContextMenu" Value="{StaticResource nodeMenu}" />
+                    </Style>
+                </views:NetworkView.Resources>
+                <views:NetworkView.NetworkBackground>
+                    <DrawingBrush TileMode="Tile"
+                                  Viewport="0,0,50,50"
+                                  ViewportUnits="Absolute">
+                        <DrawingBrush.Drawing>
+                            <GeometryDrawing>
+                                <GeometryDrawing.Pen>
+                                    <Pen Brush="#E0E0E0" Thickness="0.5"/>
+                                </GeometryDrawing.Pen>
+                                <GeometryDrawing.Geometry>
+                                    <GeometryGroup>
+                                        <LineGeometry StartPoint="0,0" EndPoint="50,0"/>
+                                        <LineGeometry StartPoint="0,0" EndPoint="0,50"/>
+                                    </GeometryGroup>
+                                </GeometryDrawing.Geometry>
+                            </GeometryDrawing>
+                        </DrawingBrush.Drawing>
+                    </DrawingBrush>
+                </views:NetworkView.NetworkBackground>
+            </views:NetworkView>
+        </Grid>
     </Grid>
 </Window>

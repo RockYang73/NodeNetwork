@@ -507,29 +507,207 @@ public interface IAutoConnectService
 
 ### 7.7 群組節點機制 (Group Node)
 
-定義於 `ActuatorApp/ViewModels/Nodes/GroupNodeViewModel.cs`:
+定義於 `ActuatorApp/ViewModels/Nodes/` 目錄:
 
 **用途:** 將多個節點打包成單一群組節點，簡化複雜配置的視覺呈現。
 
-**核心元件:**
-- `GroupNodeViewModel` - 群組節點的 ViewModel
-- `NodeGrouper` - 執行分組邏輯的服務類別 (位於 `NodeNetworkToolkit/Group/`)
-- `IOBinding (ActuatorGroupIOBinding)` - 自定義 I/O 綁定邏輯
+#### 7.7.1 核心元件
 
-**端口映射規則:**
+| 元件 | 檔案位置 | 說明 |
+|------|----------|------|
+| `GroupNodeViewModel` | `Nodes/GroupNodeViewModel.cs` | 標準群組節點 ViewModel (使用預設 NodeView) |
+| `ContainerGroupNodeViewModel` | `Nodes/ContainerGroupNodeViewModel.cs` | **容器樣式**群組節點 ViewModel |
+| `GroupNodeView` | `Views/GroupNodeView.xaml` | 容器樣式群組節點的自定義視圖 |
+| `NodeGrouper` | `NodeNetworkToolkit/Group/` | 執行分組邏輯的服務類別 |
+| `ActuatorGroupIOBinding` | `ActuatorGroupIOBinding.cs` | 自定義 I/O 綁定邏輯 |
+
+#### 7.7.2 群組節點類型
+
+**1. 標準群組節點 (GroupNodeViewModel)**
+
+使用預設的 `NodeView` 樣式，外觀與一般節點相似。
+
+```
+右鍵選單 → 「群組選取節點」
+```
+
+**2. 容器樣式群組節點 (ContainerGroupNodeViewModel)**
+
+使用自定義的 `GroupNodeView`，具有 Header 容器設計，內部以網格佈局顯示被群組化節點的產品圖片和名稱。
+
+```
+右鍵選單 → 「群組選取節點 (容器樣式)」
+```
+
+**視覺結構:**
+```
+┌─────────────────────────────────────────┐
+│  Group (3 nodes)                    [⌄] │  ← Header (深色背景)
+├─────────────────────────────────────────┤
+│  Grouped Nodes:                         │
+│  ┌────────┐  ┌────────┐  ┌────────┐    │
+│  │  [圖]  │  │  [圖]  │  │  [圖]  │    │  ← 網格佈局
+│  │  TP1   │  │  TBB2  │  │  TC5   │    │
+│  └────────┘  └────────┘  └────────┘    │
+│                                         │
+│  ○ In                          Out ○   │  ← 代理端口
+└─────────────────────────────────────────┘
+```
+
+#### 7.7.3 ContainerGroupNodeViewModel 屬性
+
+| 屬性 | 類型 | 說明 |
+|------|------|------|
+| `Subnet` | `NetworkViewModel` | 群組內部的子網路 |
+| `IOBinding` | `NodeGroupIOBinding` | I/O 綁定物件 |
+| `SubnetNodePreviewsBinding` | `ReadOnlyObservableCollection<SubnetNodePreview>` | 子節點預覽列表 |
+| `HeaderColor` | `Color?` | Header 背景顏色 |
+| `BorderColor` | `Color?` | 容器邊框顏色 |
+| `IsExpanded` | `bool` | 內容區域展開狀態 |
+
+**SubnetNodePreview 類別:**
+```csharp
+public class SubnetNodePreview
+{
+    public string Name { get; set; }           // 節點名稱
+    public ImageSource Image { get; set; }     // 產品圖片
+    public NodeType NodeType { get; set; }     // 節點類型
+    public string ModelNumber { get; set; }    // 產品型號
+}
+```
+
+#### 7.7.4 端口映射規則
+
 | 情境 | Group Node 端口 | 端口位置 | 命名 |
 |------|----------------|----------|------|
 | 外部 Output → 群組內部 Input | Input 端口 | 左側 | "In" |
 | 群組內部 Output → 外部 Input | Output 端口 | 右側 | "Out" |
 
-**特性:**
+#### 7.7.5 特性
+
 - **類型保留**: 代理端口會保留原始連線端口的 `PortType`
 - **自動清理**: 當連接到代理端口的連線被移除時，代理端口自動消失
+- **拖曳支援**: 容器樣式群組節點使用 `NodeView` 作為基礎，保留完整拖曳功能
+- **子節點預覽**: 容器內以網格佈局顯示被群組化節點的產品圖片和名稱
 
-**交互操作:**
-- **群組化**: 選取多個節點 → 右鍵選單 →「群組選取節點」
-- **解散群組**: 選取 Group Node → 右鍵選單 →「解散群組」
-- **進入群組**: 選取 Group Node → 右鍵選單 →「進入群組」(或雙擊)
+#### 7.7.6 交互操作
+
+| 操作 | 方式 |
+|------|------|
+| 標準群組化 | 選取多個節點 → 右鍵選單 →「群組選取節點」 |
+| 容器群組化 | 選取多個節點 → 右鍵選單 →「群組選取節點 (容器樣式)」 |
+| 解散群組 | 選取 Group Node → 右鍵選單 →「解散群組」 |
+| 進入群組 | 選取 Group Node → 右鍵選單 →「進入群組」(或雙擊) |
+
+#### 7.7.7 實作細節
+
+**GroupNodeView 使用 NodeView 作為基礎:**
+```xaml
+<views:NodeView x:Name="NodeView">
+    <views:NodeView.LeadingControlPresenterStyle>
+        <Style TargetType="ContentPresenter">
+            <Setter Property="ContentTemplate">
+                <Setter.Value>
+                    <DataTemplate DataType="{x:Type nodes:ContainerGroupNodeViewModel}">
+                        <!-- 子節點網格佈局 -->
+                        <ItemsControl ItemsSource="{Binding SubnetNodePreviewsBinding}">
+                            <ItemsControl.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <WrapPanel Orientation="Horizontal"/>
+                                </ItemsPanelTemplate>
+                            </ItemsControl.ItemsPanel>
+                        </ItemsControl>
+                    </DataTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </views:NodeView.LeadingControlPresenterStyle>
+</views:NodeView>
+```
+
+**群組化時收集子節點預覽:**
+```csharp
+// MainViewModel.cs - GroupNodesAsContainerCommand
+var binding = _containerGrouper.MergeIntoGroup(Network, selectedNodes);
+if (binding.GroupNode is ContainerGroupNodeViewModel containerGroupVm)
+{
+    containerGroupVm.IOBinding = binding;
+    containerGroupVm.CollectNodePreviews(selectedNodes);
+    containerGroupVm.Name = $"Group ({selectedNodes.Count} nodes)";
+}
+```
+
+### 7.8 視覺分組機制 (FrameNode)
+
+定義於 `ActuatorApp/ViewModels/Nodes/FrameNodeViewModel.cs`:
+
+**用途:** 提供類似 Blender Geometry Nodes 的視覺分組容器，用於標註和組織節點，但不改變節點結構。
+
+#### 7.8.1 核心元件
+
+| 元件 | 檔案位置 | 說明 |
+|------|----------|------|
+| `FrameNodeViewModel` | `Nodes/FrameNodeViewModel.cs` | Frame 的 ViewModel |
+| `FrameNodeView` | `Views/FrameNodeView.xaml` | Frame 的視覺呈現 |
+
+#### 7.8.2 視覺結構
+
+```
+┌─ Frame (2 nodes) ────────────────────────────┐
+│                                              │
+│   ┌─────────┐       ┌─────────┐              │
+│   │  TBB4   │──────▶│  TC14   │──────────────┼──▶ (連線穿過邊界)
+│   └─────────┘       └─────────┘              │
+│                                              │
+└──────────────────────────────────────────────┘
+```
+
+#### 7.8.3 FrameNodeViewModel 屬性
+
+| 屬性 | 類型 | 說明 |
+|------|------|------|
+| `Name` | `string` | Frame 標題 |
+| `Position` | `Point` | 左上角位置 |
+| `Size` | `Size` | Frame 尺寸 |
+| `BorderColor` | `Color` | 邊框顏色 |
+| `BackgroundColor` | `Color` | 背景顏色 (半透明) |
+| `IsSelected` | `bool` | 選取狀態 (顯示黃色邊框) |
+| `ContainedNodes` | `IObservableList<NodeViewModel>` | 包含的節點列表 |
+
+#### 7.8.4 交互操作
+
+| 操作 | 方式 |
+|------|------|
+| 建立 Frame | 選取節點 → 右鍵選單 →「建立 Frame (視覺分組)」 |
+| 拖曳 Frame | 拖曳 Header 區域 → Frame 和內部節點一起移動 |
+| 取消選取 | 點擊畫布空白區域或其他節點 |
+
+#### 7.8.5 Frame vs GroupNode 對比
+
+| 特點 | FrameNode | GroupNode |
+|------|-----------|-----------|
+| **用途** | 視覺組織/標註 | 功能性封裝 |
+| **內部節點** | 完整顯示 | 隱藏 |
+| **連線** | 直接穿過邊界 | 使用代理端口 |
+| **編輯** | 直接操作 | 需「進入群組」 |
+| **右鍵選單** | 「建立 Frame」 | 「群組選取節點」 |
+
+#### 7.8.6 實作細節
+
+**Frame 注入到 NetworkView 內部:**
+```csharp
+// MainWindow.xaml.cs - InjectFramesIntoNetworkView()
+var contentContainer = FindChild<Canvas>(NetworkView, "contentContainer");
+contentContainer.Children.Insert(1, FramesControl);
+```
+
+**拖曳使用 Preview 事件:**
+```csharp
+// FrameNodeView.xaml.cs - 使用隧道事件優先於 DragCanvas
+HeaderBorder.PreviewMouseLeftButtonDown += OnHeaderMouseDown;
+HeaderBorder.PreviewMouseMove += OnHeaderMouseMove;
+HeaderBorder.PreviewMouseLeftButtonUp += OnHeaderMouseUp;
+```
 
 ## 8. 節點圖片顯示
 

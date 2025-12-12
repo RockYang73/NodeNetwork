@@ -40,12 +40,85 @@ namespace ActuatorApp.Views
                 this.OneWayBind(ViewModel, vm => vm.Network, v => v.NetworkView.ViewModel)
                     .DisposeWith(d);
 
+                // 綁定 Frames 視覺分組
+                this.OneWayBind(ViewModel, vm => vm.FramesBound, v => v.FramesControl.ItemsSource)
+                    .DisposeWith(d);
+
+                // 注入 Frames 到 NetworkView 內部
+                InjectFramesIntoNetworkView();
+
                 // 綁定節點列表
                 BindNodeLists();
 
                 // 新增參數節點按鈕
                 AddParameterButton.Click += (s, e) => ViewModel.AddParameterNode("Param");
+                
+                // 點擊 NetworkView 時清除 Frame 選取 (使用 PreviewMouseLeftButtonDown 的低優先級)
+                NetworkView.MouseLeftButtonDown += (s, e) =>
+                {
+                    ViewModel?.ClearFrameSelection();
+                };
             });
+        }
+
+        /// <summary>
+        /// 將 FramesControl 注入到 NetworkView 的 contentContainer 中
+        /// 這樣 Frame 就會跟隨 NetworkView 的 pan/zoom
+        /// </summary>
+        private void InjectFramesIntoNetworkView()
+        {
+            // 找到 NetworkView 內部的 contentContainer Canvas
+            var contentContainer = FindChild<Canvas>(NetworkView, "contentContainer");
+            if (contentContainer == null)
+            {
+                System.Diagnostics.Debug.WriteLine("[MainWindow] contentContainer not found in NetworkView");
+                return;
+            }
+
+            // 從原本的父容器移除 FramesControl
+            if (FramesControl.Parent is Panel parentPanel)
+            {
+                parentPanel.Children.Remove(FramesControl);
+            }
+
+            // 將 FramesControl 插入到 contentContainer 的最前面 (在 backgroundCanvas 之後)
+            contentContainer.Children.Insert(1, FramesControl);
+            
+            // 設置 FramesControl 的尺寸以填滿整個區域
+            FramesControl.Width = double.NaN; // Auto
+            FramesControl.Height = double.NaN;
+            
+            System.Diagnostics.Debug.WriteLine("[MainWindow] FramesControl injected into contentContainer");
+        }
+
+        /// <summary>
+        /// 遞迴查找視覺樹中的子元素
+        /// </summary>
+        private static T FindChild<T>(System.Windows.DependencyObject parent, string childName) where T : System.Windows.DependencyObject
+        {
+            if (parent == null) return null;
+
+            int childrenCount = System.Windows.Media.VisualTreeHelper.GetChildrenCount(parent);
+            for (int i = 0; i < childrenCount; i++)
+            {
+                var child = System.Windows.Media.VisualTreeHelper.GetChild(parent, i);
+
+                if (child is T typedChild)
+                {
+                    if (child is FrameworkElement fe && fe.Name == childName)
+                    {
+                        return typedChild;
+                    }
+                }
+
+                var foundChild = FindChild<T>(child, childName);
+                if (foundChild != null)
+                {
+                    return foundChild;
+                }
+            }
+
+            return null;
         }
 
         /// <summary>

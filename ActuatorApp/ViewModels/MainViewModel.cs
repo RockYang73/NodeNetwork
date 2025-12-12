@@ -145,6 +145,47 @@ namespace ActuatorApp.ViewModels
         /// </summary>
         public ReactiveCommand<Unit, Unit> OpenGroupCommand { get; }
 
+        /// <summary>
+        /// 使用容器樣式群組化命令 (測試用)
+        /// </summary>
+        public ReactiveCommand<Unit, Unit> GroupNodesAsContainerCommand { get; }
+
+        /// <summary>
+        /// 是否使用容器樣式群組 (切換測試用)
+        /// </summary>
+        private bool _useContainerGroupStyle = false;
+        public bool UseContainerGroupStyle
+        {
+            get => _useContainerGroupStyle;
+            set => this.RaiseAndSetIfChanged(ref _useContainerGroupStyle, value);
+        }
+
+        /// <summary>
+        /// 容器樣式群組化工具
+        /// </summary>
+        private readonly NodeGrouper _containerGrouper;
+
+        /// <summary>
+        /// Frame 集合 (視覺分組容器)
+        /// </summary>
+        public SourceList<FrameNodeViewModel> Frames { get; } = new SourceList<FrameNodeViewModel>();
+        
+        /// <summary>
+        /// Frame 綁定集合 (用於 WPF ItemsSource 綁定)
+        /// </summary>
+        private readonly System.Collections.ObjectModel.ReadOnlyObservableCollection<FrameNodeViewModel> _framesBound;
+        public System.Collections.ObjectModel.ReadOnlyObservableCollection<FrameNodeViewModel> FramesBound => _framesBound;
+
+        /// <summary>
+        /// 建立 Frame 命令
+        /// </summary>
+        public ReactiveCommand<Unit, Unit> CreateFrameCommand { get; }
+
+        /// <summary>
+        /// 移除 Frame 命令
+        /// </summary>
+        public ReactiveCommand<Unit, Unit> RemoveFrameCommand { get; }
+
         public MainViewModel(IProductRepository productRepository, IAutoConnectService autoConnectService, IProductImageService productImageService) // Modified constructor
         {
             _productRepository = productRepository; // Store injected repository
@@ -161,6 +202,11 @@ namespace ActuatorApp.ViewModels
             _nodeFactory = new NodeNetworkNodeFactory(_catalog, _productImageService);
 
             Network = new NetworkViewModel();
+            
+            // 初始化 Frames 綁定集合
+            Frames.Connect()
+                .Bind(out _framesBound)
+                .Subscribe();
 
             // 根據 ProductCatalog 建立 NodeCategories
             NodeCategories = BuildNodeCategoriesFromCatalog();
@@ -203,106 +249,107 @@ namespace ActuatorApp.ViewModels
 
                         GenerateHexCommand = ReactiveCommand.Create(() => Debug.WriteLine("Generate HEX"));
 
-            
 
-            
 
                         // 初始化 NodeGrouper
-
                         _grouper = new NodeGrouper
-
                         {
-
                             GroupNodeFactory = (subnet) => new GroupNodeViewModel(subnet),
-
                             SubNetworkFactory = () => new NetworkViewModel(),
-
                             EntranceNodeFactory = () => new NodeViewModel { Name = "Group Input" },
-
                             ExitNodeFactory = () => new NodeViewModel { Name = "Group Output" },
-
                             IOBindingFactory = (groupNode, entranceNode, exitNode) =>
-
                                 new ActuatorGroupIOBinding(groupNode, entranceNode, exitNode)
-
                         };
 
-            
+                        // 初始化容器樣式 NodeGrouper (測試用)
+                        _containerGrouper = new NodeGrouper
+                        {
+                            GroupNodeFactory = (subnet) => new ContainerGroupNodeViewModel(subnet),
+                            SubNetworkFactory = () => new NetworkViewModel(),
+                            EntranceNodeFactory = () => new NodeViewModel { Name = "Group Input" },
+                            ExitNodeFactory = () => new NodeViewModel { Name = "Group Output" },
+                            IOBindingFactory = (groupNode, entranceNode, exitNode) =>
+                                new ActuatorGroupIOBinding(groupNode, entranceNode, exitNode)
+                        };
 
                         // 群組節點命令
-
                         var canGroup = this.WhenAnyObservable(vm => vm.Network.SelectedNodes.CountChanged).Select(c => c > 1);
 
                         GroupNodesCommand = ReactiveCommand.Create(() =>
-
                         {
-
                             var selectedNodes = Network.SelectedNodes.Items.ToList();
-
                             if (selectedNodes.Any())
-
                             {
-
                                 var binding = _grouper.MergeIntoGroup(Network, selectedNodes);
-
                                 if (binding.GroupNode is GroupNodeViewModel groupVm)
-
                                 {
-
                                     groupVm.IOBinding = binding;
-
                                 }
-
                             }
-
                         }, canGroup);
 
-            
+                        // 容器樣式群組化命令 (測試用)
+                        GroupNodesAsContainerCommand = ReactiveCommand.Create(() =>
+                        {
+                            var selectedNodes = Network.SelectedNodes.Items.ToList();
+                            if (selectedNodes.Any())
+                            {
+                                // 在群組化之前收集節點預覽資訊
+                                var nodePreviews = selectedNodes.ToList();
+                                
+                                var binding = _containerGrouper.MergeIntoGroup(Network, selectedNodes);
+                                if (binding.GroupNode is ContainerGroupNodeViewModel containerGroupVm)
+                                {
+                                    containerGroupVm.IOBinding = binding;
+                                    
+                                    // 收集被群組化節點的產品資訊
+                                    containerGroupVm.CollectNodePreviews(nodePreviews);
+                                    
+                                    // 設定群組名稱為包含的節點數量
+                                    containerGroupVm.Name = $"Group ({nodePreviews.Count} nodes)";
+                                    
+                                    Debug.WriteLine($"Created container group: {containerGroupVm.Name} with {nodePreviews.Count} node previews");
+                                }
+                            }
+                        }, canGroup);
 
-                        // 判斷是否選中了一個群組節點
-
+                        // 判斷是否選中了一個群組節點 (包含傳統和容器樣式)
                         var isGroupNodeSelected = this.WhenAnyValue(vm => vm.Network)
-
                             .Select(net => net.SelectedNodes.Connect())
-
                             .Switch()
-
-                            .Select(_ => Network.SelectedNodes.Count == 1 && Network.SelectedNodes.Items.First() is GroupNodeViewModel);
-
-            
+                            .Select(_ => Network.SelectedNodes.Count == 1 && 
+                                        (Network.SelectedNodes.Items.First() is GroupNodeViewModel || 
+                                         Network.SelectedNodes.Items.First() is ContainerGroupNodeViewModel));
 
                         // 解散群組命令
-
                         UngroupNodesCommand = ReactiveCommand.Create(() =>
-
                         {
-
-                            var selectedGroupNode = (GroupNodeViewModel)Network.SelectedNodes.Items.First();
-
-                            if (selectedGroupNode.IOBinding != null)
-
+                            var selectedNode = Network.SelectedNodes.Items.First();
+                            if (selectedNode is GroupNodeViewModel groupVm && groupVm.IOBinding != null)
                             {
-
-                                _grouper.Ungroup(selectedGroupNode.IOBinding);
-
+                                _grouper.Ungroup(groupVm.IOBinding);
                             }
-
+                            else if (selectedNode is ContainerGroupNodeViewModel containerVm && containerVm.IOBinding != null)
+                            {
+                                _containerGrouper.Ungroup(containerVm.IOBinding);
+                            }
                         }, isGroupNodeSelected);
 
-            
-
                         // 進入群組命令
-
                         OpenGroupCommand = ReactiveCommand.Create(() =>
-
                         {
-
-                            var selectedGroupNode = (GroupNodeViewModel)Network.SelectedNodes.Items.First();
-
-                            // TODO: Implement navigation logic (NetworkStack)
-
-                            System.Diagnostics.Debug.WriteLine($"Opening group: {selectedGroupNode.Name}");
-
+                            var selectedNode = Network.SelectedNodes.Items.First();
+                            if (selectedNode is GroupNodeViewModel groupVm)
+                            {
+                                // TODO: Implement navigation logic (NetworkStack)
+                                Debug.WriteLine($"Opening group: {groupVm.Name}");
+                            }
+                            else if (selectedNode is ContainerGroupNodeViewModel containerVm)
+                            {
+                                // TODO: Implement navigation logic (NetworkStack)
+                                Debug.WriteLine($"Opening container group: {containerVm.Name}");
+                            }
                         }, isGroupNodeSelected);
 
             
@@ -314,6 +361,58 @@ namespace ActuatorApp.ViewModels
                         AutoLayout = ReactiveCommand.Create(() =>
 
                             layouter.Layout(new Configuration { Network = Network }, 10000));
+
+                        // Frame 視覺分組命令
+                        var canCreateFrame = this.WhenAnyObservable(vm => vm.Network.SelectedNodes.CountChanged).Select(c => c > 0);
+                        
+                        CreateFrameCommand = ReactiveCommand.Create(() =>
+                        {
+                            var selectedNodes = Network.SelectedNodes.Items.ToList();
+                            if (selectedNodes.Any())
+                            {
+                                // 清除所有 Frame 的選取狀態
+                                ClearFrameSelection();
+                                
+                                // 建立新 Frame
+                                var frame = new FrameNodeViewModel
+                                {
+                                    Name = $"Frame ({selectedNodes.Count} nodes)",
+                                    ParentNetwork = Network
+                                };
+                                
+                                // 設定隨機顏色主題
+                                var colors = new[]
+                                {
+                                    System.Windows.Media.Color.FromRgb(0x00, 0x7A, 0xCC), // 藍色
+                                    System.Windows.Media.Color.FromRgb(0xE9, 0x1E, 0x63), // 粉紅色
+                                    System.Windows.Media.Color.FromRgb(0x4C, 0xAF, 0x50), // 綠色
+                                    System.Windows.Media.Color.FromRgb(0xFF, 0x98, 0x00), // 橙色
+                                    System.Windows.Media.Color.FromRgb(0x9C, 0x27, 0xB0), // 紫色
+                                };
+                                var random = new Random();
+                                frame.SetTheme(colors[random.Next(colors.Length)]);
+                                
+                                // 添加選中的節點
+                                frame.AddNodes(selectedNodes);
+                                
+                                // 添加到 Frames 集合
+                                Frames.Add(frame);
+                                
+                                Debug.WriteLine($"Created Frame: {frame.Name} at ({frame.Position.X}, {frame.Position.Y})");
+                            }
+                        }, canCreateFrame);
+                        
+                        // 移除 Frame 命令 (保留內部節點)
+                        RemoveFrameCommand = ReactiveCommand.Create(() =>
+                        {
+                            var selectedFrames = Frames.Items.Where(f => f.IsSelected).ToList();
+                            foreach (var frame in selectedFrames)
+                            {
+                                frame.Dispose();
+                                Frames.Remove(frame);
+                                Debug.WriteLine($"Removed Frame: {frame.Name}");
+                            }
+                        });
 
                         
 
@@ -331,6 +430,17 @@ namespace ActuatorApp.ViewModels
 
             // 在 ViewModel 初始化時執行載入命令
             LoadProductDataCommand.Execute().Subscribe();
+        }
+
+        /// <summary>
+        /// 清除所有 Frame 的選取狀態
+        /// </summary>
+        public void ClearFrameSelection()
+        {
+            foreach (var frame in Frames.Items)
+            {
+                frame.IsSelected = false;
+            }
         }
 
         /// <summary>

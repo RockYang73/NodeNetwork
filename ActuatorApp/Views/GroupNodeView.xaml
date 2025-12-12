@@ -1,0 +1,127 @@
+<UserControl x:Class="ActuatorApp.Views.GroupNodeView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:views="clr-namespace:NodeNetwork.Views;assembly=NodeNetwork"
+             xmlns:local="clr-namespace:ActuatorApp.Views"
+             xmlns:nodes="clr-namespace:ActuatorApp.ViewModels.Nodes"
+             mc:Ignorable="d" 
+             x:Name="Root"
+             d:DesignHeight="300" d:DesignWidth="400">
+    
+    <UserControl.Resources>
+        <local:NullToVisibilityConverter x:Key="NullToVisibilityConverter"/>
+        
+        <!-- 子節點預覽項目模板 -->
+        <DataTemplate x:Key="SubnetNodePreviewTemplate" DataType="{x:Type nodes:SubnetNodePreview}">
+            <Border Background="#30FFFFFF" 
+                    CornerRadius="4" 
+                    Padding="5" 
+                    Margin="3"
+                    MinWidth="60"
+                    MaxWidth="80"
+                    ToolTip="{Binding Name}">
+                <StackPanel HorizontalAlignment="Center">
+                    <!-- 產品圖片 -->
+                    <Border Width="40" Height="40" 
+                            Background="#20000000" 
+                            CornerRadius="4"
+                            Margin="0,0,0,3">
+                        <Grid>
+                            <!-- 有圖片時顯示圖片 -->
+                            <Image Source="{Binding Image}" 
+                                   Stretch="Uniform"
+                                   RenderOptions.BitmapScalingMode="HighQuality"
+                                   Visibility="{Binding Image, Converter={StaticResource NullToVisibilityConverter}}"/>
+                            <!-- 無圖片時顯示預設圖示 -->
+                            <TextBlock Text="📦" 
+                                       FontSize="20"
+                                       HorizontalAlignment="Center" 
+                                       VerticalAlignment="Center"
+                                       Visibility="{Binding Image, Converter={StaticResource NullToVisibilityConverter}, ConverterParameter=Inverse}"/>
+                        </Grid>
+                    </Border>
+                    <!-- 產品名稱 -->
+                    <TextBlock Text="{Binding Name}" 
+                               FontSize="9"
+                               Foreground="#FFFFFF"
+                               HorizontalAlignment="Center"
+                               TextAlignment="Center"
+                               TextTrimming="CharacterEllipsis"
+                               MaxWidth="70"/>
+                </StackPanel>
+            </Border>
+        </DataTemplate>
+    </UserControl.Resources>
+    
+    <!-- 使用 NodeView 作為基礎容器 -->
+    <Grid>
+        <views:NodeView x:Name="NodeView">
+            <!-- 在標題下方注入子節點網格 -->
+            <views:NodeView.LeadingControlPresenterStyle>
+                <Style TargetType="ContentPresenter">
+                    <Setter Property="Content" Value="{Binding}"/>
+                    <Setter Property="ContentTemplate">
+                        <Setter.Value>
+                            <DataTemplate DataType="{x:Type nodes:ContainerGroupNodeViewModel}">
+                                <!-- 容器內容區域 -->
+                                <Border Background="#15000000" 
+                                        CornerRadius="4" 
+                                        Margin="5,5,5,5"
+                                        Padding="5"
+                                        MinHeight="60"
+                                        MinWidth="100">
+                                    <Grid>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto"/>
+                                            <RowDefinition Height="*"/>
+                                        </Grid.RowDefinitions>
+                                        
+                                        <!-- 標題提示 -->
+                                        <TextBlock Grid.Row="0"
+                                                   Text="Grouped Nodes:"
+                                                   FontSize="10"
+                                                   Foreground="#80FFFFFF"
+                                                   Margin="0,0,0,5"/>
+                                        
+                                        <!-- 子節點網格 (綁定到 SubnetNodePreviewsBinding) -->
+                                        <ItemsControl Grid.Row="1"
+                                                      ItemsSource="{Binding SubnetNodePreviewsBinding}"
+                                                      ItemTemplate="{StaticResource SubnetNodePreviewTemplate}">
+                                            <ItemsControl.ItemsPanel>
+                                                <ItemsPanelTemplate>
+                                                    <WrapPanel Orientation="Horizontal" 
+                                                               MaxWidth="300"/>
+                                                </ItemsPanelTemplate>
+                                            </ItemsControl.ItemsPanel>
+                                        </ItemsControl>
+                                        
+                                        <!-- 空群組提示 (當沒有預覽時顯示) -->
+                                        <TextBlock Grid.Row="1"
+                                                   Text="Double-click to enter group"
+                                                   FontSize="10"
+                                                   Foreground="#60FFFFFF"
+                                                   HorizontalAlignment="Center"
+                                                   VerticalAlignment="Center">
+                                            <TextBlock.Style>
+                                                <Style TargetType="TextBlock">
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding SubnetNodePreviewsBinding.Count}" Value="0">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                </Style>
+                                            </TextBlock.Style>
+                                        </TextBlock>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </views:NodeView.LeadingControlPresenterStyle>
+        </views:NodeView>
+    </Grid>
+</UserControl>
